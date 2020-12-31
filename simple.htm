@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Planets</title>
+	<style>
+	*      {box-sizing:border-box;}
+	body   {padding:0; margin:0; background:black;}
+	/*canvas {width:100%; height:100%;}*/
+	</style>
+</head>
+<body>
+
+<canvas width="1500" height="900"></canvas>
+
+<script>
+let html             = document.querySelector('html');
+let canvas           = document.querySelector('canvas');
+let ctx              = canvas.getContext('2d');
+let pi2              = Math.PI * 2;
+let spaceObjectsList = [];
+
+function dtr (d) {
+	return d * (Math.PI / 180);
+}
+
+function getDistance (x1, y1, x2, y2) {
+	let xDistance = x1 - x2;
+	let yDistance = y1 - y2;
+	let d         = Math.sqrt(xDistance**2 + yDistance**2);
+	return d;
+}
+
+
+
+let view = new class {
+	constructor () {
+		this._zoomLevelsList = [
+			0.3, 0.4, 0.5, 0.6, 0.8,
+			1,
+			1.5, 2, 3, 4, 5,
+		];
+		this._spaceObject = null;
+		this.centerX      = 0;
+		this.centerY      = 0;
+		this._x           = 0;
+		this._y           = 0;
+		this._zoomLevel   = 5;
+		this._zoom        = null;
+		//this.fromX        = 0;
+		//this.fromY        = 0;
+		//this.toX          = 0;
+		//this.toY          = 0;
+		this.toObject     = null;
+		this.isMoving     = false;
+		this._setZoom();
+	}
+
+	get spaceObject ()   { return this._spaceObject; }
+	set spaceObject (so) { this._spaceObject = so; this._x = so.x; this._y = so.y; }
+
+	get x () { return this.isMoving ? this._x : this._spaceObject.x; }
+	get y () { return this.isMoving ? this._y : this._spaceObject.y; }
+
+	get zoom ()  { return this._zoom; }
+
+	zoomIn  () { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
+	zoomOut () { this._zoomLevel = Math.max(this._zoomLevel - 1, 0);                               this._setZoom(); }
+
+	_setZoom() { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
+
+	startMoving (so) {
+		if (so == this.spaceObject) {
+			return;
+		}
+		//this._spaceObject = this.spaceObject;
+		this._x           = this._spaceObject.x;
+		this._y           = this._spaceObject.y;
+		this.isMoving     = true;
+		//this.fromX        = this.spaceObject.x;
+		//this.fromY        = this.spaceObject.y;
+		//this.toX          = so.x;
+		//this.toY          = so.y;
+		this.toObject     = so;
+		//console.log(`${so.x}:${so.y}`);
+		this.continueMoving();
+	}
+
+	continueMoving () {
+		if (!this.isMoving) {
+			return;
+		}
+		let distance     = getDistance(this._x, this._y, this.toObject.x, this.toObject.y);
+		let moveDistance = (distance >= 20) ? 20 : distance;
+		let coeff        = distance / moveDistance;
+		let moveX        = (this.toObject.x - this._x) / coeff;// * view.zoom;
+		let moveY        = (this.toObject.y - this._y) / coeff;// * view.zoom;
+		this._x += moveX;
+		this._y += moveY;
+		//console.log(`${this._x}:${this._y} -> ${this.toObject.x}:${this.toObject.y} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
+		if (moveDistance < 20) {
+			this.spaceObject = this.toObject;
+			this.isMoving = false;
+			//console.log(this.spaceObject);
+		}
+	}
+}();
+
+
+
+class SpaceObject {
+	constructor (data) {
+		data = {
+			...{
+				parent:   null,
+				children: [],
+				size:     10,
+				color:    'white',
+				distance: 0,
+				speed:    0,
+				angle:    Math.floor(Math.random() * 360),
+				x:        0,
+				y:        0,
+			},
+			...data
+		};
+		for (let [k,v] of Object.entries(data)) {
+			this[k] = v;
+		}
+
+		this.centerDistance = 0;
+		this.orbitLength    = 0;
+		this.lx             = 0;
+		this.ly             = 0;
+
+		this.radius = this.size / 2;
+
+		this.setCoords();
+	}
+
+
+	get drawX () { return view.centerX - view.x*view.zoom + this.x*view.zoom; }
+	get drawY () { return view.centerY - view.y*view.zoom + this.y*view.zoom; }
+
+
+	addChild (child) {
+		child.setParent(this);
+		this.children.push(child);
+	}
+
+
+	setParent (parent) {
+		this.parent = parent;
+		if (this.distance) {
+			this.centerDistance = this.distance + parent.radius;
+			this.orbitLength    = 2 * Math.PI * this.centerDistance;
+			if (this.speed) {
+				let orbitPartSize = this.orbitLength / this.speed;
+				this.moveAngle    = 360 / orbitPartSize;
+			} else {
+				this.moveAngle    = 0;
+			}
+		}
+	}
+
+
+	setCoords () {
+		if (!this.parent) {
+			return;
+		}
+		this.lx = Math.cos(dtr(this.angle)) * this.centerDistance;
+		this.ly = Math.sin(dtr(this.angle)) * this.centerDistance;
+		this.x  = this.parent.x + this.lx;
+		this.y  = this.parent.y + this.ly;
+	}
+
+
+	move () {
+		if (!this.moveAngle) {
+			return;
+		}
+		this.angle += this.moveAngle;
+		if (this.angle > 360) {
+			this.angle -= 360;
+		}
+		this.setCoords();
+	}
+
+
+	draw () {
+		ctx.beginPath();
+		ctx.fillStyle = this.color;
+		ctx.arc(
+			this.drawX,
+			this.drawY,
+			this.radius * view.zoom,
+			0,
+			pi2
+		);
+		//console.log(`${this.x} -> ${this.drawX}, ${this.y} -> ${this.drawY}`);
+		ctx.fill();
+	}
+}
+
+
+
+let sun = new SpaceObject({
+	x:     0,
+	y:     0,
+	size:  100,
+	color: 'yellow',
+});
+sun.addChild(new SpaceObject({
+	size:     8,
+	color:    'white',
+	distance: 30,
+	speed:    2,
+}));
+sun.addChild(new SpaceObject({
+	size:     20,
+	color:    'orange',
+	distance: 70,
+	speed:    1.5,
+}));
+
+let earth = new SpaceObject({
+	size:     25,
+	color:    'green',
+	distance: 140,
+	speed:    1.2,
+});
+sun.addChild(earth);
+
+earth.addChild(new SpaceObject({
+	size:     5,
+	color:    'white',
+	distance: 12,
+	speed:    1,
+}));
+
+let mars = new SpaceObject({
+	size:     17,
+	color:    'red',
+	distance: 190,
+	speed:    1,
+});
+sun.addChild(mars);
+
+mars.addChild(new SpaceObject({
+	size:     5,
+	color:    'white',
+	distance: 9,
+	speed:    0.8,
+}));
+mars.addChild(new SpaceObject({
+	size:     5,
+	color:    'white',
+	distance: 18,
+	speed:    0.6,
+}));
+
+for (let a = 0; a < 300; a++) {
+	sun.addChild(new SpaceObject({
+		size:     2 + Math.floor(Math.random() * 3),
+		color:    'gray',
+		distance: 280 + Math.floor(Math.random() * 151),
+		speed:    0.3,
+	}));
+}
+
+let jupiter = new SpaceObject({
+	size:     50,
+	color:    'khaki',
+	distance: 550,
+	speed:    1,
+});
+sun.addChild(jupiter);
+
+for (let a = 0; a < 4; a++) {
+	jupiter.addChild(new SpaceObject({
+		size:     5,
+		color:    'white',
+		distance: 20 + a*10,
+		speed:    1  - a/10,
+	}));
+}
+
+let saturn = new SpaceObject({
+	size:     30,
+	color:    'khaki',
+	distance: 700,
+	speed:    0.9,
+});
+sun.addChild(saturn);
+
+for (let a = 0; a < 500; a++) {
+	saturn.addChild(new SpaceObject({
+		size:     1,
+		color:    'gray',
+		distance: 20 + Math.floor(Math.random() * 21),
+		speed:    0.2,
+	}));
+}
+
+sun.addChild(new SpaceObject({
+	size:     28,
+	color:    'lightblue',
+	distance: 850,
+	speed:    0.8,
+}));
+sun.addChild(new SpaceObject({
+	size:     26,
+	color:    'lightblue',
+	distance: 950,
+	speed:    0.7,
+}));
+
+let pluto = new SpaceObject({
+	size:     5,
+	color:    'gray',
+	distance: 1000,
+	speed:    0.5,
+});
+sun.addChild(pluto);
+
+pluto.addChild(new SpaceObject({
+	size:     3,
+	color:    'gray',
+	distance: 5,
+	speed:    0.2,
+}));
+
+
+
+view.spaceObject = sun;
+
+
+
+function resizeView () {
+	//console.log(window.innerWidth, html.clientWidth);
+	canvas.width  = html.clientWidth  - 20;
+	canvas.height = html.clientHeight - 20;
+	view.centerX        = Math.round(canvas.width  / 2);
+	view.centerY        = Math.round(canvas.height / 2);
+}
+resizeView();
+
+
+
+function processSpaceObjects (spaceObject, callback) {
+	callback(spaceObject);
+	if (spaceObject.children.length) {
+		for (let so of spaceObject.children) {
+			processSpaceObjects(so, callback);
+		}
+	}
+}
+
+
+
+function animationFrame () {
+	processSpaceObjects(sun, so=>so.move());
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	processSpaceObjects(sun, so=>so.draw());
+	view.continueMoving();
+	window.requestAnimationFrame(animationFrame);
+}
+
+window.requestAnimationFrame(animationFrame);
+
+
+
+window.onresize = resizeView;
+
+canvas.onclick = function (e) {
+	let rect          = canvas.getBoundingClientRect();
+	let distance      = 1000000;
+	let clickedObject = null;
+	processSpaceObjects(sun, so => {
+		let clickedX = e.clientX - rect.left;
+		let clickedY = e.clientY - rect.top;
+		let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
+		//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.drawX}:${so.drawY}`);
+		if (d < distance) {
+			distance      = d;
+			clickedObject = so;
+		}
+	});
+	//console.log(clickedObject);
+	view.startMoving(clickedObject);
+};
+
+window.onwheel = function (e) {
+	(e.deltaY < 0) ? view.zoomIn() : view.zoomOut();
+};
+</script>
+
+</body>
+</html>
