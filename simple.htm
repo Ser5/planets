@@ -41,27 +41,25 @@ let view = new class {
 			1,
 			1.5, 2, 3, 4, 5,
 		];
+		this.state        = 'std';
 		this._spaceObject = null;
 		this.centerX      = 0;
 		this.centerY      = 0;
+		this._dragStartX  = 0;
+		this._dragStartY  = 0;
 		this._x           = 0;
 		this._y           = 0;
 		this._zoomLevel   = 5;
 		this._zoom        = null;
-		//this.fromX        = 0;
-		//this.fromY        = 0;
-		//this.toX          = 0;
-		//this.toY          = 0;
 		this.toObject     = null;
-		this.isMoving     = false;
 		this._setZoom();
 	}
 
 	get spaceObject ()   { return this._spaceObject; }
 	set spaceObject (so) { this._spaceObject = so; this._x = so.x; this._y = so.y; }
 
-	get x () { return this.isMoving ? this._x : this._spaceObject.x; }
-	get y () { return this.isMoving ? this._y : this._spaceObject.y; }
+	get x () { return this.state == 'std' ? this._spaceObject.x : this._x; }
+	get y () { return this.state == 'std' ? this._spaceObject.y : this._y; }
 
 	get zoom ()  { return this._zoom; }
 
@@ -74,21 +72,17 @@ let view = new class {
 		if (so == this.spaceObject) {
 			return;
 		}
-		//this._spaceObject = this.spaceObject;
-		this._x           = this._spaceObject.x;
-		this._y           = this._spaceObject.y;
-		this.isMoving     = true;
-		//this.fromX        = this.spaceObject.x;
-		//this.fromY        = this.spaceObject.y;
-		//this.toX          = so.x;
-		//this.toY          = so.y;
-		this.toObject     = so;
-		//console.log(`${so.x}:${so.y}`);
+		if (this.state == 'std') {
+			this._x = this._spaceObject.x;
+			this._y = this._spaceObject.y;
+		}
+		this.state    = 'moving';
+		this.toObject = so;
 		this.continueMoving();
 	}
 
 	continueMoving () {
-		if (!this.isMoving) {
+		if (this.state != 'moving') {
 			return;
 		}
 		let distance     = getDistance(this._x, this._y, this.toObject.x, this.toObject.y);
@@ -101,9 +95,153 @@ let view = new class {
 		//console.log(`${this._x}:${this._y} -> ${this.toObject.x}:${this.toObject.y} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
 		if (moveDistance < 20) {
 			this.spaceObject = this.toObject;
-			this.isMoving = false;
+			this.state = 'std';
 			//console.log(this.spaceObject);
 		}
+	}
+
+	drag (offset) {
+		if (this.state != 'dragging') {
+			this._dragStartX  = this.x;
+			this._dragStartY  = this.y;
+			this.state        = 'dragging';
+			this._spaceObject = null;
+			//console.log(`start drag from ${this._dragStartX}:${this._dragStartY}`);
+		}
+		this._x = this._dragStartX - offset.x;
+		this._y = this._dragStartY - offset.y;
+		//console.log(`${this._dragStartX} - ${offset.x} = ${this._x}`);
+	}
+
+	stopDragging () {
+		//console.log('stop drag');
+		this.state = 'free';
+	}
+}();
+
+
+
+class MouseInput {
+	constructor (e) {
+		this.x    = e.clientX;
+		this.y    = e.clientY;
+		this.time = Date.now();
+	}
+}
+
+
+
+let input = new class {
+	constructor () {
+		this.state = 'std';
+		this.down  = null;
+		this.up    = null;
+		this.move  = null;
+	}
+
+
+	/**
+	 * Уведомление о вводе.
+	 *
+	 * m:
+	 * - mousedown
+	 * - mouseup
+	 * - mousemove
+	 * - wheel
+	 * - mouseleave
+	 * - mouseenter
+	 *
+	 * data:
+	 * - e
+	 *
+	 * state:
+	 * - std
+	 * - mousedown
+	 * -
+	 *
+	 * @param {String} m
+	 * @param {Object} data
+	 */
+	notify (m, data) {
+		let state = this.state;
+		let e     = data.e;
+		if (m == 'mousedown') {
+			this.down  = new MouseInput(e);
+			if (state == 'std') {
+				this.state = 'mousedown';
+			}
+		}
+		else if (m == 'mousemove') {
+			if (state == 'mousedown') {
+				this.move = new MouseInput(e);
+				if (this._isMovedForDrag(this.move)) {
+					canvas.style.cursor = 'grab';
+					this.state          = 'drag';
+					this._drag();
+				}
+			}
+			if (state == 'drag') {
+				this.move = new MouseInput(e);
+				this._drag();
+			}
+		}
+		else if (m == 'mouseup') {
+			this.up = new MouseInput(e);
+			canvas.style.cursor = null;
+			if (state == 'mousedown' || state == 'drag') {
+				if (state == 'drag') {
+					this.state = 'std';
+					view.stopDragging();
+				}
+				if (this._isTimedForFocus() && !this._isMovedForDrag(this.up)) {
+					this.state = 'std';
+					this._click();
+				}
+			}
+		}
+
+		if (m == 'wheel') {
+			(e.deltaY < 0) ? view.zoomIn() : view.zoomOut();
+		}
+	}
+
+
+	_isTimedForFocus () {
+		let timeDiff = this.up.time - this.down.time;
+		return (timeDiff <= 500);
+	}
+
+	_isMovedForDrag (mouseInput) {
+		let distance = getDistance(this.down.x, this.down.y, mouseInput.x, mouseInput.y);
+		return (distance > 3);
+	}
+
+
+	_click () {
+		let rect          = canvas.getBoundingClientRect();
+		let distance      = 1000000;
+		let clickedObject = null;
+		processSpaceObjects(sun, so => {
+			let clickedX = this.down.x - rect.left;
+			let clickedY = this.down.y - rect.top;
+			let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
+			//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.drawX}:${so.drawY}`);
+			if (d < distance) {
+				distance      = d;
+				clickedObject = so;
+			}
+		});
+		//console.log(clickedObject);
+		view.startMoving(clickedObject);
+	}
+
+
+	_drag () {
+		//console.log(`${this.move.x} - ${this.down.x}`);
+		view.drag({
+			x: this.move.x - this.down.x,
+			y: this.move.y - this.down.y
+		});
 	}
 }();
 
@@ -294,14 +432,14 @@ let saturn = new SpaceObject({
 });
 sun.addChild(saturn);
 
-for (let a = 0; a < 500; a++) {
+/*for (let a = 0; a < 500; a++) {
 	saturn.addChild(new SpaceObject({
 		size:     1,
 		color:    'gray',
 		distance: 20 + Math.floor(Math.random() * 21),
 		speed:    0.2,
 	}));
-}
+}*/
 
 sun.addChild(new SpaceObject({
 	size:     28,
@@ -373,27 +511,12 @@ window.requestAnimationFrame(animationFrame);
 
 window.onresize = resizeView;
 
-canvas.onclick = function (e) {
-	let rect          = canvas.getBoundingClientRect();
-	let distance      = 1000000;
-	let clickedObject = null;
-	processSpaceObjects(sun, so => {
-		let clickedX = e.clientX - rect.left;
-		let clickedY = e.clientY - rect.top;
-		let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
-		//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.drawX}:${so.drawY}`);
-		if (d < distance) {
-			distance      = d;
-			clickedObject = so;
-		}
-	});
-	//console.log(clickedObject);
-	view.startMoving(clickedObject);
-};
 
-window.onwheel = function (e) {
-	(e.deltaY < 0) ? view.zoomIn() : view.zoomOut();
-};
+
+canvas.onmousedown = e=>input.notify('mousedown', {e});
+canvas.onmouseup   = e=>input.notify('mouseup',   {e});
+canvas.onmousemove = e=>input.notify('mousemove', {e});
+window.onwheel     = e=>input.notify('wheel',     {e});
 </script>
 
 </body>
