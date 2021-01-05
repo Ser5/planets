@@ -4,158 +4,16 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Planets</title>
+	<style>
+	*      {box-sizing:border-box;}
+	body   {padding:0; margin:0; background:black;}
+	/*canvas {background: gray;}*/
+	</style>
 </head>
 <body>
 
-<script>
-class Entity {
-	constructor (data) {
-		this.id         = data.id;
-		this.components = {};
-		if (data.componentsList) {
-			for (let c of data.componentsList) {
-				c.entityId = this.id;
-				this.components[c.code] = c;
-			}
-		}
-	}
-}
-
-
-
-class Component {
-	constructor (data) {
-		this.entityId = null;
-		for (let fieldName of this.fieldNamesList) {
-			this[fieldName] = data[fieldName];
-		}
-	}
-
-	get code () {}
-
-	get fieldNamesList () {}
-}
-
-
-
-class System {
-	/*constructor (data) {
-		this.id = data.id;
-	}*/
-}
-
-
-
-class NestingComponent extends Component {
-	get code () { return 'nesting'; }
-	get fieldNamesList () { return ['parentId', 'distance', 'angle', 'speed']; }
-}
-
-
-
-class AppearanceComponent extends Component {
-	get code () { return 'appearance'; }
-	get fieldNamesList () { return ['size', 'color']; }
-}
-
-
-
-class PositionComponent extends Component {
-	constructor (data) {
-		super(data);
-		this.x = 0;
-		this.y = 0;
-	}
-	get code () { return 'position'; }
-	get fieldNamesList () { return []; }
-}
-
-
-
-class ComponentsFactory {
-	constructor () {
-		this.map = {
-			nesting:    NestingComponent,
-			appearance: AppearanceComponent,
-			position:   PositionComponent,
-		};
-	}
-
-	get (code, data) {
-		let cls = this.map[code];
-		return new cls(data);
-	}
-}
-
-
-
-const componentsTable = {
-	nesting:    [],
-	appearance: [],
-	position:   [],
-};
-
-
-
-class EntitiesTable {
-	constructor () {
-		this.list              = [];
-		this.componentsFactory = new ComponentsFactory();
-		this.componentsTable   = componentsTable;
-	}
-
-	createSpaceObject ({componentsData}) {
-		let componentsList = [];
-		for (let [code, data] of Object.entries(componentsData)) {
-			componentsList.push(this.componentsFactory.get(code, data));
-		}
-		let spaceObject = new Entity({id: this.list.length+1, componentsList});
-		this.list.push(spaceObject);
-		for (let c of Object.values(spaceObject.components)) {
-			this.componentsTable[c.code].push(c);
-		}
-		return spaceObject;
-	}
-}
-
-
-
-class AppearanceSystem extends System {
-	constructor () {
-		super();
-		this.componentsList = componentsTable.appearance;
-	}
-
-	run () {
-		for (let c of this.componentsList) {
-			console.log(c.entityId);
-		}
-	}
-}
-
-
-
-class SystemsTable {
-	constructor () {
-		this.systems = {
-			appearance: new AppearanceSystem(),
-		};
-	}
-}
-
-
-let entitiesTable = new EntitiesTable();
-let systemsTable  = new SystemsTable();
-
-let sun = entitiesTable.createSpaceObject({
-	componentsData: {
-		nesting:    {parentId: 0, distance: 0, angle: 0, speed: 0},
-		appearance: {size: 100, color: 'yellow'},
-		position:   {},
-	},
-});
-console.log(sun, componentsTable);
-</script>
+<canvas width="1500" height="900"></canvas>
+<script src="/dist/bundle.js"></script>
 
 </body>
 </html>

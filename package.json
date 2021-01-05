@@ -1,0 +1,13 @@
+{
+  "name": "Planets",
+  "version": "1.0.0",
+  "description": "Планеты крутятся",
+  "main": "index.js",
+  "scripts": {
+    "dev":   "rollup -c rollup.config.js --watch --watch.clearScreen",
+    "build": "rollup -c rollup.config.js"
+  },
+  "keywords": [],
+  "author": "Ser5",
+  "license": "MIT"
+}
