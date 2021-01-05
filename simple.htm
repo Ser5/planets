@@ -222,9 +222,9 @@ let input = new class {
 	 * - mousedown
 	 * - mouseup
 	 * - mousemove
-	 * - wheel
 	 * - mouseleave
 	 * - mouseenter
+	 * - wheel
 	 *
 	 * data:
 	 * - e
@@ -241,7 +241,7 @@ let input = new class {
 		let state = this.state;
 		let e     = data.e;
 		if (m == 'mousedown') {
-			this.down  = new MouseInput(e);
+			this.down = new MouseInput(e);
 			if (state == 'std') {
 				this.state = 'mousedown';
 			}
@@ -272,6 +272,22 @@ let input = new class {
 					this.state = 'std';
 					this._click();
 				}
+			}
+		}
+		else if (m == 'mouseleave') {
+			this.up = new MouseInput(e);
+			canvas.style.cursor = null;
+			if (state == 'mousedown' || state == 'drag') {
+				if (state == 'drag') {
+					this.state = 'std';
+					view.stopDragging();
+				}
+			}
+		}
+		else if (m == 'mouseenter') {
+			if (e.buttons & 1) {
+				this.down = new MouseInput(e);
+				this.state = 'mousedown';
 			}
 		}
 
@@ -638,10 +654,12 @@ window.onresize = resizeView;
 
 
 
-canvas.onmousedown = e=>input.notify('mousedown', {e});
-canvas.onmouseup   = e=>input.notify('mouseup',   {e});
-canvas.onmousemove = e=>input.notify('mousemove', {e});
-window.onwheel     = e=>input.notify('wheel',     {e});
+canvas.onmousedown  = e=>input.notify('mousedown',  {e});
+canvas.onmouseup    = e=>input.notify('mouseup',    {e});
+canvas.onmousemove  = e=>input.notify('mousemove',  {e});
+canvas.onmouseleave = e=>input.notify('mouseleave', {e});
+canvas.onmouseenter = e=>input.notify('mouseenter', {e});
+window.onwheel      = e=>input.notify('wheel',      {e});
 </script>
 
 </body>
