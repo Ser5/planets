@@ -7,7 +7,7 @@
 	<style>
 	*      {box-sizing:border-box;}
 	body   {padding:0; margin:0; background:black;}
-	/*canvas {width:100%; height:100%;}*/
+	/*canvas {background: gray;}*/
 	</style>
 </head>
 <body>
@@ -601,9 +601,9 @@ view.zoomIn();*/
 
 
 function resizeView () {
-	//console.log(window.innerWidth, html.clientWidth);
-	canvas.width  = html.clientWidth  - 20;
-	canvas.height = html.clientHeight - 20;
+	//console.log(`${window.innerWidth}x${window.innerHeight} vs ${html.clientWidth}x${html.clientHeight}`);
+	canvas.width  = window.innerWidth;
+	canvas.height = window.innerHeight - 5;
 	view.centerX  = Math.round(canvas.width  / 2);
 	view.centerY  = Math.round(canvas.height / 2);
 }
