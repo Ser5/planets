@@ -492,29 +492,32 @@
 			sphere:   sphereSystem.getComponent(  {spaceObject, size: 8, color: 'white'}),
 		}),
 	}));
-	/*sun.addChild(new SpaceObject({
-		components: {
-			'orbit':  new OrbitComponent({distance: 70, speed: 1.5}),
-			'sphere': new SphereComponent({size: 20, color: 'orange'}),
-		},
+	sun.addChild(new SpaceObject({
+		components: spaceObject => ({
+			position: positionSystem.getComponent({spaceObject}),
+			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 70, speed: 1.5}),
+			sphere:   sphereSystem.getComponent(  {spaceObject, size: 20, color: 'orange'}),
+		}),
 	}));
 
 	let earth = new SpaceObject({
-		size:     25,
-		color:    'green',
-		distance: 140,
-		speed:    1.2,
+		components: spaceObject => ({
+			position: positionSystem.getComponent({spaceObject}),
+			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 140, speed: 1.2}),
+			sphere:   sphereSystem.getComponent(  {spaceObject, size: 25, color: 'green'}),
+		}),
 	});
 	sun.addChild(earth);
 
 	earth.addChild(new SpaceObject({
-		size:     5,
-		color:    'white',
-		distance: 12,
-		speed:    1,
+		components: spaceObject => ({
+			position: positionSystem.getComponent({spaceObject}),
+			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 12, speed: 1}),
+			sphere:   sphereSystem.getComponent(  {spaceObject, size: 5, color: 'white'}),
+		}),
 	}));
 
-	let mars = new SpaceObject({
+	/*let mars = new SpaceObject({
 		size:     17,
 		color:    'red',
 		distance: 190,
