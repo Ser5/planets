@@ -6,8 +6,9 @@ import System      from 'system';
 
 
 let sphereSystem = new class extends System {
-	getComponent ({size, color}) {
+	getComponent ({spaceObject, size, color}) {
 		return {
+			spaceObject,
 			size,
 			color,
 			...{radius: size / 2}
@@ -19,6 +20,7 @@ let sphereSystem = new class extends System {
 	draw () {
 		objectsTree.process('sphere', so => this._draw(so));
 	}
+
 
 
 	_draw (so) {

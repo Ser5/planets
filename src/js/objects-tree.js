@@ -14,7 +14,7 @@ let objectsTree = new class {
 		}
 		if (spaceObject.children.length) {
 			for (let so of spaceObject.children) {
-				this._process(so, callback);
+				this._process(componentFilter, so, callback);
 			}
 		}
 	}

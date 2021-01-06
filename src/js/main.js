@@ -1,31 +1,33 @@
 import {canvas, ctx} from 'init';
 import objectsTree   from 'objects-tree';
 
-import view          from './view.js';
-import input         from './input.js';
+import view          from 'view';
+import input         from 'input';
 
-import SpaceObject   from './SpaceObject.js';
+import SpaceObject   from 'space-object';
 
-import System         from './system.js';
-import positionSystem from './system/position-system.js';
-import sphereSystem   from './system/exterior/sphere-system.js';
-//import drawSystem     from './system/draw-system.js';
+import System         from 'system';
+import positionSystem from 'system/position-system';
+import orbitSystem    from 'system/move/orbit-system';
+import sphereSystem   from 'system/exterior/sphere-system';
+//import drawSystem     from 'system/draw-system';
 
 
 
 let sun = new SpaceObject({
-	components: {
-		'position': positionSystem.getComponent({x:0, y:0}),
-		'sphere':   sphereSystem.getComponent({size: 100, color: 'yellow'}),
-	},
+	components: spaceObject => ({
+		position: positionSystem.getComponent({spaceObject, x:0, y:0}),
+		sphere:   sphereSystem.getComponent(  {spaceObject, size: 100, color: 'yellow'}),
+	}),
 });
-/*sun.addChild(new SpaceObject({
-	components: {
-		'orbit':  new OrbitComponent({distance: 30, speed: 2}),
-		'sphere': new SphereComponent({size: 8, color: 'white'}),
-	},
-}));
 sun.addChild(new SpaceObject({
+	components: spaceObject => ({
+		position: positionSystem.getComponent({spaceObject}),
+		orbit:    orbitSystem.getComponent(   {spaceObject, distance: 30, speed: 2}),
+		sphere:   sphereSystem.getComponent(  {spaceObject, size: 8, color: 'white'}),
+	}),
+}));
+/*sun.addChild(new SpaceObject({
 	components: {
 		'orbit':  new OrbitComponent({distance: 70, speed: 1.5}),
 		'sphere': new SphereComponent({size: 20, color: 'orange'}),
@@ -175,10 +177,11 @@ resizeView();
 
 
 function animationFrame () {
+	orbitSystem.move();
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	sphereSystem.draw();
 	view.continueMoving();
-	//window.requestAnimationFrame(animationFrame);
+	window.requestAnimationFrame(animationFrame);
 }
 
 animationFrame();

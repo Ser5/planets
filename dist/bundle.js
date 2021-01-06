@@ -6,11 +6,6 @@
 	let ctx              = canvas.getContext('2d');
 	let pi2              = Math.PI * 2;
 
-
-	function dtr (d) {
-		return d * (Math.PI / 180);
-	}
-
 	function getDistance (x1, y1, x2, y2) {
 		let xDistance = x1 - x2;
 		let yDistance = y1 - y2;
@@ -34,7 +29,7 @@
 			}
 			if (spaceObject.children.length) {
 				for (let so of spaceObject.children) {
-					this._process(so, callback);
+					this._process(componentFilter, so, callback);
 				}
 			}
 		}
@@ -338,11 +333,73 @@
 		}
 	}();
 
+	class System {
+		constructor () {}
+
+
+
+		getComponent (data) {}
+
+
+
+		run () {}
+	}
+
+	let orbitSystem = new class extends System {
+		getComponent ({spaceObject, distance, speed}) {
+			return {
+				spaceObject,
+				distance,
+				speed,
+				...{centerDistance: 0, angle: 0, moveAngle: 0}
+			};
+		}
+
+
+
+		initValues (so) {
+			let centerDistance = so.parent.sphere.radius + so.orbit.distance;
+			let angle          = Math.random() * pi2;
+			let orbitLength    = centerDistance * pi2;
+			let orbitPartSize  = orbitLength / so.orbit.speed;
+			let moveAngle      = pi2 / orbitPartSize;
+
+			so.orbit = {...so.orbit, centerDistance, angle, moveAngle};
+		}
+
+
+
+		move () {
+			objectsTree.process('orbit', so => this._move(so));
+		}
+
+
+
+		_move (so) {
+			let orbit = so.orbit;
+			orbit.angle += orbit.moveAngle;
+			if (orbit.angle > pi2) {
+				orbit.angle -= pi2;
+			}
+			this._setCoords(so);
+		}
+
+
+
+		_setCoords (so) {
+			let orbit     = so.orbit;
+			let lx        = Math.cos(orbit.angle) * orbit.centerDistance;
+			let ly        = Math.sin(orbit.angle) * orbit.centerDistance;
+			so.position.x = so.parent.position.x + lx;
+			so.position.y = so.parent.position.y + ly;
+		}
+	}();
+
 	class SpaceObject {
 		constructor (data) {
 			data = {
 				...{
-					components: {},
+					components: (so)=>{},
 					parent:     null,
 					children:   [],
 				},
@@ -351,7 +408,7 @@
 			for (let [k,v] of Object.entries(data)) {
 				this[k] = v;
 			}
-			for (let [k,v] of Object.entries(data.components)) {
+			for (let [k,v] of Object.entries(data.components(this))) {
 				this[k] = v;
 			}
 		}
@@ -373,64 +430,20 @@
 
 		setParent (parent) {
 			this.parent = parent;
-			if (this.distance) {
-				this.centerDistance = this.distance + parent.sphere.radius;
-				this.orbitLength    = 2 * Math.PI * this.centerDistance;
-				if (this.speed) {
-					let orbitPartSize = this.orbitLength / this.speed;
-					this.moveAngle    = 360 / orbitPartSize;
-				} else {
-					this.moveAngle    = 0;
-				}
-			}
+			orbitSystem.initValues(this);
 		}
-
-
-		setCoords () {
-			if (!this.parent) {
-				return;
-			}
-			this.lx = Math.cos(dtr(this.sphere.angle)) * this.centerDistance;
-			this.ly = Math.sin(dtr(this.sphere.angle)) * this.centerDistance;
-			this.x  = this.parent.x + this.lx;
-			this.y  = this.parent.y + this.ly;
-		}
-
-
-		move () {
-			if (!this.moveAngle) {
-				return;
-			}
-			let sphere = this.sphere;
-			sphere.angle += this.moveAngle;
-			if (sphere.angle > 360) {
-				sphere.angle -= 360;
-			}
-			this.setCoords();
-		}
-	}
-
-	class System {
-		constructor () {}
-
-
-
-		getComponent (data) {}
-
-
-
-		run () {}
 	}
 
 	let positionSystem = new class extends System {
-		getComponent () {
-			return {x: 0, y: 0};
+		getComponent ({spaceObject}) {
+			return {spaceObject, x: 0, y: 0};
 		}
 	};
 
 	let sphereSystem = new class extends System {
-		getComponent ({size, color}) {
+		getComponent ({spaceObject, size, color}) {
 			return {
+				spaceObject,
 				size,
 				color,
 				...{radius: size / 2}
@@ -442,6 +455,7 @@
 		draw () {
 			objectsTree.process('sphere', so => this._draw(so));
 		}
+
 
 
 		_draw (so) {
@@ -461,23 +475,24 @@
 		}
 	};
 
-	//import drawSystem     from './system/draw-system.js';
+	//import drawSystem     from 'system/draw-system';
 
 
 
 	let sun = new SpaceObject({
-		components: {
-			'position': positionSystem.getComponent({x:0, y:0}),
-			'sphere':   sphereSystem.getComponent({size: 100, color: 'yellow'}),
-		},
+		components: spaceObject => ({
+			position: positionSystem.getComponent({spaceObject, x:0, y:0}),
+			sphere:   sphereSystem.getComponent(  {spaceObject, size: 100, color: 'yellow'}),
+		}),
 	});
-	/*sun.addChild(new SpaceObject({
-		components: {
-			'orbit':  new OrbitComponent({distance: 30, speed: 2}),
-			'sphere': new SphereComponent({size: 8, color: 'white'}),
-		},
-	}));
 	sun.addChild(new SpaceObject({
+		components: spaceObject => ({
+			position: positionSystem.getComponent({spaceObject}),
+			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 30, speed: 2}),
+			sphere:   sphereSystem.getComponent(  {spaceObject, size: 8, color: 'white'}),
+		}),
+	}));
+	/*sun.addChild(new SpaceObject({
 		components: {
 			'orbit':  new OrbitComponent({distance: 70, speed: 1.5}),
 			'sphere': new SphereComponent({size: 20, color: 'orange'}),
@@ -627,10 +642,11 @@
 
 
 	function animationFrame () {
+		orbitSystem.move();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		sphereSystem.draw();
 		view.continueMoving();
-		//window.requestAnimationFrame(animationFrame);
+		window.requestAnimationFrame(animationFrame);
 	}
 
 	animationFrame();
