@@ -96,10 +96,10 @@ let view = new class {
 	}
 
 	get spaceObject ()   { return this._spaceObject; }
-	set spaceObject (so) { this._spaceObject = so; this._x = so.x; this._y = so.y; }
+	set spaceObject (so) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
 
-	get x () { return this.state == 'std' ? this._spaceObject.x : this._x; }
-	get y () { return this.state == 'std' ? this._spaceObject.y : this._y; }
+	get x () { return this.state == 'std' ? this._spaceObject.position.x : this._x; }
+	get y () { return this.state == 'std' ? this._spaceObject.position.y : this._y; }
 
 	get drawX () { return this.centerX - this.x * this.zoom; }
 	get drawY () { return this.centerY - this.y * this.zoom; }
@@ -116,8 +116,8 @@ let view = new class {
 			return;
 		}
 		if (this.state == 'std') {
-			this._x = this._spaceObject.x;
-			this._y = this._spaceObject.y;
+			this._x = this._spaceObject.position.x;
+			this._y = this._spaceObject.position.y;
 		}
 		this.state    = 'moving';
 		this.toObject = so;

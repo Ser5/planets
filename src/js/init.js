@@ -20,12 +20,3 @@ export function getDistance (x1, y1, x2, y2) {
 	let d         = Math.sqrt(xDistance**2 + yDistance**2);
 	return d;
 }
-
-export function processSpaceObjects (spaceObject, callback) {
-	callback(spaceObject);
-	if (spaceObject.children.length) {
-		for (let so of spaceObject.children) {
-			processSpaceObjects(so, callback);
-		}
-	}
-}

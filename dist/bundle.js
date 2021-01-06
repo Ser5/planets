@@ -6,11 +6,6 @@
 	let ctx              = canvas.getContext('2d');
 	let pi2              = Math.PI * 2;
 
-	let rootObject = {
-		get ()   { return this.value; },
-		set (so) { this.value = so; },
-	};
-
 
 	function dtr (d) {
 		return d * (Math.PI / 180);
@@ -23,14 +18,27 @@
 		return d;
 	}
 
-	function processSpaceObjects (spaceObject, callback) {
-		callback(spaceObject);
-		if (spaceObject.children.length) {
-			for (let so of spaceObject.children) {
-				processSpaceObjects(so, callback);
+	let objectsTree = new class {
+		constructor () {
+			this.root = null;
+		}
+
+		process (componentFilter, callback) {
+			//console.log(this.root);
+			this._process(componentFilter, this.root, callback);
+		}
+
+		_process (componentFilter, spaceObject, callback) {
+			if (componentFilter && spaceObject[componentFilter]) {
+				callback(spaceObject);
+			}
+			if (spaceObject.children.length) {
+				for (let so of spaceObject.children) {
+					this._process(so, callback);
+				}
 			}
 		}
-	}
+	}();
 
 	/**
 	 * Управление обзором.
@@ -126,10 +134,10 @@
 		}
 
 		get spaceObject ()   { return this._spaceObject; }
-		set spaceObject (so) { this._spaceObject = so; this._x = so.x; this._y = so.y; }
+		set spaceObject (so) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
 
-		get x () { return this.state == 'std' ? this._spaceObject.x : this._x; }
-		get y () { return this.state == 'std' ? this._spaceObject.y : this._y; }
+		get x () { return this.state == 'std' ? this._spaceObject.position.x : this._x; }
+		get y () { return this.state == 'std' ? this._spaceObject.position.y : this._y; }
 
 		get drawX () { return this.centerX - this.x * this.zoom; }
 		get drawY () { return this.centerY - this.y * this.zoom; }
@@ -146,8 +154,8 @@
 				return;
 			}
 			if (this.state == 'std') {
-				this._x = this._spaceObject.x;
-				this._y = this._spaceObject.y;
+				this._x = this._spaceObject.position.x;
+				this._y = this._spaceObject.position.y;
 			}
 			this.state    = 'moving';
 			this.toObject = so;
@@ -306,7 +314,7 @@
 			let rect          = canvas.getBoundingClientRect();
 			let distance      = 1000000;
 			let clickedObject = null;
-			processSpaceObjects(rootObject.get(), so => {
+			objectsTree.process(so => {
 				let clickedX = this.down.x - rect.left;
 				let clickedY = this.down.y - rect.top;
 				let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
@@ -334,31 +342,23 @@
 		constructor (data) {
 			data = {
 				...{
-					parent:   null,
-					children: [],
-					size:     10,
-					color:    'white',
-					distance: 0,
-					speed:    0,
-					angle:    Math.floor(Math.random() * 360),
-					x:        0,
-					y:        0,
+					components: {},
+					parent:     null,
+					children:   [],
 				},
 				...data
 			};
 			for (let [k,v] of Object.entries(data)) {
 				this[k] = v;
 			}
-
-			this.centerDistance = 0;
-			this.orbitLength    = 0;
-			this.lx             = 0;
-			this.ly             = 0;
-
-			this.radius = this.size / 2;
-
-			this.setCoords();
+			for (let [k,v] of Object.entries(data.components)) {
+				this[k] = v;
+			}
 		}
+
+
+		c            (code)            { return this.components[code]; }
+		setComponent (code, component) { this.components[code] = component; }
 
 
 		get drawX () { return view.drawX + this.x*view.zoom; }
@@ -374,7 +374,7 @@
 		setParent (parent) {
 			this.parent = parent;
 			if (this.distance) {
-				this.centerDistance = this.distance + parent.radius;
+				this.centerDistance = this.distance + parent.sphere.radius;
 				this.orbitLength    = 2 * Math.PI * this.centerDistance;
 				if (this.speed) {
 					let orbitPartSize = this.orbitLength / this.speed;
@@ -390,8 +390,8 @@
 			if (!this.parent) {
 				return;
 			}
-			this.lx = Math.cos(dtr(this.angle)) * this.centerDistance;
-			this.ly = Math.sin(dtr(this.angle)) * this.centerDistance;
+			this.lx = Math.cos(dtr(this.sphere.angle)) * this.centerDistance;
+			this.ly = Math.sin(dtr(this.sphere.angle)) * this.centerDistance;
 			this.x  = this.parent.x + this.lx;
 			this.y  = this.parent.y + this.ly;
 		}
@@ -401,79 +401,87 @@
 			if (!this.moveAngle) {
 				return;
 			}
-			this.angle += this.moveAngle;
-			if (this.angle > 360) {
-				this.angle -= 360;
+			let sphere = this.sphere;
+			sphere.angle += this.moveAngle;
+			if (sphere.angle > 360) {
+				sphere.angle -= 360;
 			}
 			this.setCoords();
 		}
+	}
+
+	class System {
+		constructor () {}
+
+
+
+		getComponent (data) {}
+
+
+
+		run () {}
+	}
+
+	let positionSystem = new class extends System {
+		getComponent () {
+			return {x: 0, y: 0};
+		}
+	};
+
+	let sphereSystem = new class extends System {
+		getComponent ({size, color}) {
+			return {
+				size,
+				color,
+				...{radius: size / 2}
+			};
+		}
+
 
 
 		draw () {
+			objectsTree.process('sphere', so => this._draw(so));
+		}
+
+
+		_draw (so) {
+			let drawX = view.drawX + so.position.x * view.zoom;
+			let drawY = view.drawY + so.position.y * view.zoom;
+
 			ctx.beginPath();
-			ctx.fillStyle = this.color;
+			ctx.fillStyle = so.sphere.color;
 			ctx.arc(
-				this.drawX,
-				this.drawY,
-				this.radius * view.zoom,
+				drawX, drawY,
+				so.sphere.radius * view.zoom,
 				0,
 				pi2
 			);
-			//console.log(`${this.x} -> ${this.drawX}, ${this.y} -> ${this.drawY}`);
+			//console.log(`${so.position.x} -> ${drawX}, ${so.position.y} -> ${drawY}`);
 			ctx.fill();
 		}
-	}
+	};
 
-	class PlanetDisc extends SpaceObject {
-		constructor (data) {
-			super(data);
-		}
+	//import drawSystem     from './system/draw-system.js';
 
 
-		get drawX () { return this.parent.drawX; }
-		get drawY () { return this.parent.drawY; }
-
-
-		setCoords () {}
-
-
-		move () {}
-
-
-		draw () {
-			ctx.beginPath();
-			ctx.strokeStyle = this.color;
-			ctx.lineWidth   = this.size * view.zoom;
-			let diameter =
-				(this.parent.radius + this.distance) * view.zoom +
-				this.size * view.zoom / 2;
-			ctx.arc(
-				this.drawX, this.drawY,
-				diameter,
-				0, pi2
-			);
-			//console.log(`(${this.parent.radius} + ${this.distance}) * ${view.zoom} + ${this.size} * view.zoom / 2 = ${diameter}`);
-			ctx.stroke();
-		}
-	}
 
 	let sun = new SpaceObject({
-		x:     0,
-		y:     0,
-		size:  100,
-		color: 'yellow',
+		components: {
+			'position': positionSystem.getComponent({x:0, y:0}),
+			'sphere':   sphereSystem.getComponent({size: 100, color: 'yellow'}),
+		},
 	});
-	sun.addChild(new SpaceObject({
-		size:     8,
-		color:    'white',
-		distance: 30,
-		speed:    2,
+	/*sun.addChild(new SpaceObject({
+		components: {
+			'orbit':  new OrbitComponent({distance: 30, speed: 2}),
+			'sphere': new SphereComponent({size: 8, color: 'white'}),
+		},
 	}));
 	sun.addChild(new SpaceObject({
-		size:     20,
-		color:    'orange',
-		distance: 70,
-		speed:    1.5,
+		components: {
+			'orbit':  new OrbitComponent({distance: 70, speed: 1.5}),
+			'sphere': new SphereComponent({size: 20, color: 'orange'}),
+		},
 	}));
 
 	let earth = new SpaceObject({
@@ -536,33 +544,35 @@
 			distance: 20 + a*10,
 			speed:    1  - a/10,
 		}));
-	}
+	}*/
 
-	let saturn = new SpaceObject({
-		size:     30,
-		color:    'khaki',
-		distance: 700,
-		speed:    0.9,
+	/*let saturn = new SpaceObject({
+		components: {
+			'orbit':  new OrbitComponent({distance: 700, speed: 0.9}),
+			'sphere': new SphereComponent({size: 30, color: 'khaki'}),
+		},
 	});
 	sun.addChild(saturn);
 
-	saturn.addChild(new PlanetDisc({
-		distance: 5,
-		size:     6,
-		color:    '#f0e68c88',
+	saturn.addChild(new SpaceObject({
+		components: {
+			'around': new AroundComponent({distance: 5}),
+			'disc':   new SphereComponent({size: 6, color: '#f0e68c88'}),
+		},
 	}));
-	saturn.addChild(new PlanetDisc({
-		distance: 12,
-		size:     4,
-		color:    '#f0e68c88',
-	}));
+	saturn.addChild(new SpaceObject({
+		components: {
+			'around': new AroundComponent({distance: 12}),
+			'disc':   new SphereComponent({size: 4, color: '#f0e68c88'}),
+		},
+	}));*/
 
-	let uranus = new SpaceObject({
+	/*let uranus = new SpaceObject({
 		size:     28,
 		color:    'lightblue',
 		distance: 850,
 		speed:    0.8,
-	});
+	})
 	sun.addChild(uranus);
 
 	uranus.addChild(new PlanetDisc({
@@ -591,11 +601,11 @@
 		color:    'gray',
 		distance: 5,
 		speed:    0.2,
-	}));
+	}));*/
 
 
 
-	rootObject.set(sun);
+	objectsTree.root = sun;
 	view.spaceObject = sun;
 	/*view.zoomIn();
 	view.zoomIn();
@@ -617,11 +627,10 @@
 
 
 	function animationFrame () {
-		processSpaceObjects(sun, so=>so.move());
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		processSpaceObjects(sun, so=>so.draw());
+		sphereSystem.draw();
 		view.continueMoving();
-		window.requestAnimationFrame(animationFrame);
+		//window.requestAnimationFrame(animationFrame);
 	}
 
 	animationFrame();

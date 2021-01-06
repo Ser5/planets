@@ -1,6 +1,7 @@
-import {canvas, getDistance, rootObject, processSpaceObjects} from './init.js';
-import view       from './view.js';
-import MouseInput from './MouseInput.js';
+import {canvas, getDistance} from 'init';
+import objectsTree           from 'objects-tree';
+import view                  from 'view';
+import MouseInput            from 'mouse-input';
 
 
 
@@ -110,7 +111,7 @@ let input = new class {
 		let rect          = canvas.getBoundingClientRect();
 		let distance      = 1000000;
 		let clickedObject = null;
-		processSpaceObjects(rootObject.get(), so => {
+		objectsTree.process(so => {
 			let clickedX = this.down.x - rect.left;
 			let clickedY = this.down.y - rect.top;
 			let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
