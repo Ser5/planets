@@ -7,24 +7,18 @@ import System      from 'system';
 
 let orbitSystem = new class extends System {
 	getComponent ({spaceObject, distance, speed}) {
+		let centerDistance = spaceObject.parent.sphere.radius + distance;
+		let angle          = Math.random() * pi2;
+		let orbitLength    = centerDistance * pi2;
+		let orbitPartSize  = orbitLength / speed;
+		let moveAngle      = pi2 / orbitPartSize;
+
 		return {
 			spaceObject,
 			distance,
 			speed,
-			...{centerDistance: 0, angle: 0, moveAngle: 0}
+			...{centerDistance, angle, moveAngle}
 		};
-	}
-
-
-
-	initValues (so) {
-		let centerDistance = so.parent.sphere.radius + so.orbit.distance;
-		let angle          = Math.random() * pi2;
-		let orbitLength    = centerDistance * pi2;
-		let orbitPartSize  = orbitLength / so.orbit.speed;
-		let moveAngle      = pi2 / orbitPartSize;
-
-		so.orbit = {...so.orbit, centerDistance, angle, moveAngle};
 	}
 
 

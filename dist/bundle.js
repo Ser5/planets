@@ -347,24 +347,18 @@
 
 	let orbitSystem = new class extends System {
 		getComponent ({spaceObject, distance, speed}) {
+			let centerDistance = spaceObject.parent.sphere.radius + distance;
+			let angle          = Math.random() * pi2;
+			let orbitLength    = centerDistance * pi2;
+			let orbitPartSize  = orbitLength / speed;
+			let moveAngle      = pi2 / orbitPartSize;
+
 			return {
 				spaceObject,
 				distance,
 				speed,
-				...{centerDistance: 0, angle: 0, moveAngle: 0}
+				...{centerDistance, angle, moveAngle}
 			};
-		}
-
-
-
-		initValues (so) {
-			let centerDistance = so.parent.sphere.radius + so.orbit.distance;
-			let angle          = Math.random() * pi2;
-			let orbitLength    = centerDistance * pi2;
-			let orbitPartSize  = orbitLength / so.orbit.speed;
-			let moveAngle      = pi2 / orbitPartSize;
-
-			so.orbit = {...so.orbit, centerDistance, angle, moveAngle};
 		}
 
 
@@ -489,39 +483,40 @@
 
 	let sun = spaceObjectsManager.create({
 		components: {
-			position: {x: 0, y: 0},
+			position: {},
 			sphere:   {size: 100, color: 'yellow'},
 		},
 	});
+	spaceObjectsManager.create({
+		parent:     sun,
+		components: {
+			position: {},
+			orbit:    {distance: 30, speed: 2},
+			sphere:   {size: 8, color: 'white'},
+		},
+	});
 	/*sun.addChild(new SpaceObject({
-		components: spaceObject => ({
-			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {distance: 30, speed: 2}),
-			sphere:   sphereSystem.getComponent(  {size: 8, color: 'white'}),
-		}),
-	}));
-	sun.addChild(new SpaceObject({
-		components: spaceObject => ({
-			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {distance: 70, speed: 1.5}),
-			sphere:   sphereSystem.getComponent(  {size: 20, color: 'orange'}),
+		components: {
+			position: {},
+			orbit:    {distance: 70, speed: 1.5},
+			sphere:   {size: 20, color: 'orange'},
 		}),
 	}));
 
 	let earth = new SpaceObject({
-		components: spaceObject => ({
-			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {distance: 140, speed: 1.2}),
-			sphere:   sphereSystem.getComponent(  {size: 25, color: 'green'}),
+		components: {
+			position: {},
+			orbit:    {distance: 140, speed: 1.2},
+			sphere:   {size: 25, color: 'green'},
 		}),
 	});
 	sun.addChild(earth);
 
 	earth.addChild(new SpaceObject({
-		components: spaceObject => ({
-			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {distance: 12, speed: 1}),
-			sphere:   sphereSystem.getComponent(  {size: 5, color: 'white'}),
+		components: {
+			position: {},
+			orbit:    {distance: 12, speed: 1},
+			sphere:   {size: 5, color: 'white'},
 		}),
 	}));*/
 
