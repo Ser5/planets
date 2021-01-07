@@ -696,39 +696,49 @@
 		},
 	});
 
-	/*let uranus = new SpaceObject({
-		size:     28,
-		color:    'lightblue',
-		distance: 850,
-		speed:    0.8,
-	})
 
-	uranus.addChild(new PlanetDisc({
-		distance: 7,
-		size:     5,
-		color:    '#add8e688',
-	}));
-
-	sun.addChild(new SpaceObject({
-		size:     26,
-		color:    'lightblue',
-		distance: 950,
-		speed:    0.7,
-	}));
-
-	let pluto = new SpaceObject({
-		size:     5,
-		color:    'gray',
-		distance: 1000,
-		speed:    0.5,
+	let uranus = spaceObjectsManager.create({
+		parent:     sun,
+		components: {
+			position: {},
+			orbit:    {distance: 850, speed: 0.8},
+			sphere:   {size: 28, color: 'lightblue'},
+		},
+	});
+	spaceObjectsManager.create({
+		parent:     uranus,
+		components: {
+			position: {},
+			still:    {},
+			disc:     {distance: 7, size: 5, color: '#add8e688'},
+		},
 	});
 
-	pluto.addChild(new SpaceObject({
-		size:     3,
-		color:    'gray',
-		distance: 5,
-		speed:    0.2,
-	}));*/
+	spaceObjectsManager.create({
+		parent:     sun,
+		components: {
+			position: {},
+			orbit:    {distance: 950, speed: 0.7},
+			sphere:   {size: 26, color: 'lightblue'},
+		},
+	});
+
+	let pluto = spaceObjectsManager.create({
+		parent:     sun,
+		components: {
+			position: {},
+			orbit:    {distance: 1000, speed: 0.5},
+			sphere:   {size: 5, color: 'gray'},
+		},
+	});
+	spaceObjectsManager.create({
+		parent:     pluto,
+		components: {
+			position: {},
+			orbit:    {distance: 5, speed: 0.2},
+			sphere:   {size: 3, color: 'gray'},
+		},
+	});
 
 
 
