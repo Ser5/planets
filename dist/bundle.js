@@ -634,30 +634,42 @@
 		},
 	});
 
-	/*for (let a = 0; a < 300; a++) {
-		sun.addChild(new SpaceObject({
-			size:     2 + Math.floor(Math.random() * 3),
-			color:    'gray',
-			distance: 280 + Math.floor(Math.random() * 151),
-			speed:    0.3,
-		}));
+	for (let a = 0; a < 300; a++) {
+		spaceObjectsManager.create({
+			parent:     sun,
+			components: {
+				position: {},
+				orbit: {
+					distance: 280 + Math.floor(Math.random() * 151),
+					speed:    0.3,
+				},
+				sphere: {
+					size:  2 + Math.floor(Math.random() * 3),
+					color: 'gray',
+				},
+			},
+		});
 	}
 
-	let jupiter = new SpaceObject({
-		size:     50,
-		color:    'khaki',
-		distance: 550,
-		speed:    1,
+	let jupiter = spaceObjectsManager.create({
+		parent:     sun,
+		components: {
+			position: {},
+			orbit:    {distance: 550, speed: 1},
+			sphere:   {size: 50, color: 'khaki'},
+		},
 	});
 
 	for (let a = 0; a < 4; a++) {
-		jupiter.addChild(new SpaceObject({
-			size:     5,
-			color:    'white',
-			distance: 20 + a*10,
-			speed:    1  - a/10,
-		}));
-	}*/
+		spaceObjectsManager.create({
+			parent:     jupiter,
+			components: {
+				position: {},
+				orbit:    {distance: 20 + a*10, speed: 1 - a/10},
+				sphere:   {size: 5, color: 'white'},
+			},
+		});
+	}
 
 	let saturn = spaceObjectsManager.create({
 		parent:     sun,
