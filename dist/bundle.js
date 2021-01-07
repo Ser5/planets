@@ -350,8 +350,16 @@
 			let centerDistance = spaceObject.parent.sphere.radius + distance;
 			let angle          = Math.random() * pi2;
 			let orbitLength    = centerDistance * pi2;
-			let orbitPartSize  = orbitLength / speed;
-			let moveAngle      = pi2 / orbitPartSize;
+			let orbitPartSize  = speed / orbitLength;
+			let moveAngle      = pi2 * orbitPartSize;
+
+			/*console.log(`Расстояние от центра: ${spaceObject.parent.sphere.radius} + ${distance} = ${centerDistance}`);
+			console.log(`Начальный угол: ${angle}`);
+			console.log(`Длина орбиты: ${orbitLength}`);
+			console.log(`Какую часть орбиты объект проходит со скоростью ${speed}: ${orbitPartSize}`);
+			console.log(`Сколько радиан объект проходит со скоростью ${speed}: ${moveAngle}`);
+			console.log(`В градусах: ${360 * orbitPartSize}`);
+			console.log('----------------');*/
 
 			return {
 				spaceObject,
@@ -371,6 +379,7 @@
 
 		_move (so) {
 			let orbit = so.orbit;
+			//console.log(orbit.moveAngle);
 			orbit.angle += orbit.moveAngle;
 			if (orbit.angle > pi2) {
 				orbit.angle -= pi2;
@@ -495,30 +504,32 @@
 			sphere:   {size: 8, color: 'white'},
 		},
 	});
-	/*sun.addChild(new SpaceObject({
+	spaceObjectsManager.create({
+		parent:     sun,
 		components: {
 			position: {},
 			orbit:    {distance: 70, speed: 1.5},
 			sphere:   {size: 20, color: 'orange'},
-		}),
-	}));
+		},
+	});
 
-	let earth = new SpaceObject({
+	let earth = spaceObjectsManager.create({
+		parent:     sun,
 		components: {
 			position: {},
 			orbit:    {distance: 140, speed: 1.2},
 			sphere:   {size: 25, color: 'green'},
-		}),
+		},
 	});
-	sun.addChild(earth);
 
-	earth.addChild(new SpaceObject({
+	spaceObjectsManager.create({
+		parent:     earth,
 		components: {
 			position: {},
 			orbit:    {distance: 12, speed: 1},
 			sphere:   {size: 5, color: 'white'},
-		}),
-	}));*/
+		},
+	});
 
 	/*let mars = new SpaceObject({
 		size:     17,
@@ -526,7 +537,6 @@
 		distance: 190,
 		speed:    1,
 	});
-	sun.addChild(mars);
 
 	mars.addChild(new SpaceObject({
 		size:     5,
@@ -556,7 +566,6 @@
 		distance: 550,
 		speed:    1,
 	});
-	sun.addChild(jupiter);
 
 	for (let a = 0; a < 4; a++) {
 		jupiter.addChild(new SpaceObject({
@@ -573,7 +582,6 @@
 			'sphere': new SphereComponent({size: 30, color: 'khaki'}),
 		},
 	});
-	sun.addChild(saturn);
 
 	saturn.addChild(new SpaceObject({
 		components: {
@@ -594,7 +602,6 @@
 		distance: 850,
 		speed:    0.8,
 	})
-	sun.addChild(uranus);
 
 	uranus.addChild(new PlanetDisc({
 		distance: 7,
@@ -615,7 +622,6 @@
 		distance: 1000,
 		speed:    0.5,
 	});
-	sun.addChild(pluto);
 
 	pluto.addChild(new SpaceObject({
 		size:     3,
@@ -651,12 +657,22 @@
 		orbitSystem.move();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		sphereSystem.draw();
-		view.continueMoving();
+		//view.continueMoving();
 		window.requestAnimationFrame(animationFrame);
 	}
 
 	animationFrame();
 
+	/*sphereSystem.draw();
+	setInterval(function () {
+		orbitSystem.move();
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		sphereSystem.draw();
+		let text = '';
+		objectsTree.process('orbit', so => text += `${rtd(so.orbit.angle)}, `);
+		console.log(text);
+		//objectsTree.process('orbit', so => console.log(rtd(so.orbit.angle)));
+	}, 1000);*/
 
 
 	window.onresize = resizeView;

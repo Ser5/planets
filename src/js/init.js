@@ -11,7 +11,10 @@ export let rootObject = {
 
 
 export function dtr (d) {
-	return d * (Math.PI / 180);
+	return d * (pi2 / 360);
+}
+export function rtd (r) {
+	return r / pi2 * 360;
 }
 
 export function getDistance (x1, y1, x2, y2) {

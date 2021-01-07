@@ -1,4 +1,4 @@
-import {canvas, ctx} from 'init';
+import {canvas, ctx, rtd} from 'init';
 
 import view          from 'view';
 import input         from 'input';
@@ -29,30 +29,32 @@ SpaceObjectsManager.create({
 		sphere:   {size: 8, color: 'white'},
 	},
 });
-/*sun.addChild(new SpaceObject({
+SpaceObjectsManager.create({
+	parent:     sun,
 	components: {
 		position: {},
 		orbit:    {distance: 70, speed: 1.5},
 		sphere:   {size: 20, color: 'orange'},
-	}),
-}));
+	},
+});
 
-let earth = new SpaceObject({
+let earth = SpaceObjectsManager.create({
+	parent:     sun,
 	components: {
 		position: {},
 		orbit:    {distance: 140, speed: 1.2},
 		sphere:   {size: 25, color: 'green'},
-	}),
+	},
 });
-sun.addChild(earth);
 
-earth.addChild(new SpaceObject({
+SpaceObjectsManager.create({
+	parent:     earth,
 	components: {
 		position: {},
 		orbit:    {distance: 12, speed: 1},
 		sphere:   {size: 5, color: 'white'},
-	}),
-}));*/
+	},
+});
 
 /*let mars = new SpaceObject({
 	size:     17,
@@ -60,7 +62,6 @@ earth.addChild(new SpaceObject({
 	distance: 190,
 	speed:    1,
 });
-sun.addChild(mars);
 
 mars.addChild(new SpaceObject({
 	size:     5,
@@ -90,7 +91,6 @@ let jupiter = new SpaceObject({
 	distance: 550,
 	speed:    1,
 });
-sun.addChild(jupiter);
 
 for (let a = 0; a < 4; a++) {
 	jupiter.addChild(new SpaceObject({
@@ -107,7 +107,6 @@ for (let a = 0; a < 4; a++) {
 		'sphere': new SphereComponent({size: 30, color: 'khaki'}),
 	},
 });
-sun.addChild(saturn);
 
 saturn.addChild(new SpaceObject({
 	components: {
@@ -128,7 +127,6 @@ saturn.addChild(new SpaceObject({
 	distance: 850,
 	speed:    0.8,
 })
-sun.addChild(uranus);
 
 uranus.addChild(new PlanetDisc({
 	distance: 7,
@@ -149,7 +147,6 @@ let pluto = new SpaceObject({
 	distance: 1000,
 	speed:    0.5,
 });
-sun.addChild(pluto);
 
 pluto.addChild(new SpaceObject({
 	size:     3,
@@ -185,12 +182,22 @@ function animationFrame () {
 	orbitSystem.move();
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	sphereSystem.draw();
-	view.continueMoving();
+	//view.continueMoving();
 	window.requestAnimationFrame(animationFrame);
 }
 
 animationFrame();
 
+/*sphereSystem.draw();
+setInterval(function () {
+	orbitSystem.move();
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	sphereSystem.draw();
+	let text = '';
+	objectsTree.process('orbit', so => text += `${rtd(so.orbit.angle)}, `);
+	console.log(text);
+	//objectsTree.process('orbit', so => console.log(rtd(so.orbit.angle)));
+}, 1000);*/
 
 
 window.onresize = resizeView;
