@@ -442,8 +442,10 @@
 		_setCoords (so) {
 			let pos = so.position;
 
-			pos.drawX = view.drawX + pos.x * view.zoom;
-			pos.drawY = view.drawY + pos.y * view.zoom;
+			let [parentX, parentY] = so.parent ? [so.parent.drawX, so.parent.drawY] : [0, 0];
+
+			pos.drawX = view.drawX + parentX + pos.x * view.zoom;
+			pos.drawY = view.drawY + parentY + pos.y * view.zoom;
 			//console.log(`${pos.drawX}:${pos.drawY}`);
 		}
 	}();
@@ -481,9 +483,10 @@
 	};
 
 	let discSystem = new class extends System {
-		getComponent ({spaceObject, size, color}) {
+		getComponent ({spaceObject, distance, size, color}) {
 			return {
 				spaceObject,
+				distance,
 				size,
 				color,
 				...{radius: size / 2}
@@ -499,16 +502,17 @@
 
 
 		_draw (so) {
+			let disc    = so.disc;
 			so.position = {...so.parent.position};
 
 			ctx.beginPath();
-			ctx.strokeStyle = this.color;
-			ctx.lineWidth   = this.size * view.zoom;
+			ctx.strokeStyle = disc.color;
+			ctx.lineWidth   = disc.size * view.zoom;
 			let diameter =
-				(this.parent.radius + this.distance) * view.zoom +
-				this.size * view.zoom / 2;
+				(so.parent.sphere.radius + disc.distance) * view.zoom +
+				disc.size * view.zoom / 2;
 			ctx.arc(
-				this.drawX, this.drawY,
+				so.position.drawX, so.position.drawY,
 				diameter,
 				0, pi2
 			);
@@ -655,25 +659,30 @@
 		}));
 	}*/
 
-	/*let saturn = new SpaceObject({
+	let saturn = spaceObjectsManager.create({
+		parent:     sun,
 		components: {
-			'orbit':  new OrbitComponent({distance: 700, speed: 0.9}),
-			'sphere': new SphereComponent({size: 30, color: 'khaki'}),
+			position: {},
+			orbit:    {distance: 700, speed: 0.9},
+			sphere:   {size: 30, color: 'khaki'},
 		},
 	});
-
-	saturn.addChild(new SpaceObject({
+	spaceObjectsManager.create({
+		parent:     saturn,
 		components: {
-			'around': new AroundComponent({distance: 5}),
-			'disc':   new SphereComponent({size: 6, color: '#f0e68c88'}),
+			position: {},
+			still:    {},
+			disc:     {distance: 5, size: 6, color: '#f0e68c88'},
 		},
-	}));
-	saturn.addChild(new SpaceObject({
+	});
+	spaceObjectsManager.create({
+		parent:     saturn,
 		components: {
-			'around': new AroundComponent({distance: 12}),
-			'disc':   new SphereComponent({size: 4, color: '#f0e68c88'}),
+			position: {},
+			still:    {},
+			disc:     {distance: 12, size: 4, color: '#f0e68c88'},
 		},
-	}));*/
+	});
 
 	/*let uranus = new SpaceObject({
 		size:     28,
@@ -737,6 +746,7 @@
 		orbitSystem.move();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		sphereSystem.draw();
+		discSystem.draw();
 		//view.continueMoving();
 		window.requestAnimationFrame(animationFrame);
 	}

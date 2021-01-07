@@ -12,6 +12,7 @@ import positionSystem from 'system/position-system';
 import stillSystem    from 'system/move/still-system';
 import orbitSystem    from 'system/move/orbit-system';
 import sphereSystem   from 'system/exterior/sphere-system';
+import discSystem     from 'system/exterior/disc-system';
 //import drawSystem     from 'system/draw-system';
 
 
@@ -108,25 +109,30 @@ for (let a = 0; a < 4; a++) {
 	}));
 }*/
 
-/*let saturn = new SpaceObject({
+let saturn = SpaceObjectsManager.create({
+	parent:     sun,
 	components: {
-		'orbit':  new OrbitComponent({distance: 700, speed: 0.9}),
-		'sphere': new SphereComponent({size: 30, color: 'khaki'}),
+		position: {},
+		orbit:    {distance: 700, speed: 0.9},
+		sphere:   {size: 30, color: 'khaki'},
 	},
 });
-
-saturn.addChild(new SpaceObject({
+SpaceObjectsManager.create({
+	parent:     saturn,
 	components: {
-		'around': new AroundComponent({distance: 5}),
-		'disc':   new SphereComponent({size: 6, color: '#f0e68c88'}),
+		position: {},
+		still:    {},
+		disc:     {distance: 5, size: 6, color: '#f0e68c88'},
 	},
-}));
-saturn.addChild(new SpaceObject({
+});
+SpaceObjectsManager.create({
+	parent:     saturn,
 	components: {
-		'around': new AroundComponent({distance: 12}),
-		'disc':   new SphereComponent({size: 4, color: '#f0e68c88'}),
+		position: {},
+		still:    {},
+		disc:     {distance: 12, size: 4, color: '#f0e68c88'},
 	},
-}));*/
+});
 
 /*let uranus = new SpaceObject({
 	size:     28,
@@ -190,6 +196,7 @@ function animationFrame () {
 	orbitSystem.move();
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	sphereSystem.draw();
+	discSystem.draw();
 	//view.continueMoving();
 	window.requestAnimationFrame(animationFrame);
 }
