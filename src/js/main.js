@@ -56,27 +56,32 @@ SpaceObjectsManager.create({
 	},
 });
 
-/*let mars = new SpaceObject({
-	size:     17,
-	color:    'red',
-	distance: 190,
-	speed:    1,
+let mars = SpaceObjectsManager.create({
+	parent:     sun,
+	components: {
+		position: {},
+		orbit:    {distance: 190, speed: 1},
+		sphere:   {size: 17, color: 'red'},
+	},
+});
+SpaceObjectsManager.create({
+	parent:     mars,
+	components: {
+		position: {},
+		orbit:    {distance: 9, speed: 0.8},
+		sphere:   {size: 5, color: 'white'},
+	},
+});
+SpaceObjectsManager.create({
+	parent:     mars,
+	components: {
+		position: {},
+		orbit:    {distance: 18, speed: 0.6},
+		sphere:   {size: 5, color: 'white'},
+	},
 });
 
-mars.addChild(new SpaceObject({
-	size:     5,
-	color:    'white',
-	distance: 9,
-	speed:    0.8,
-}));
-mars.addChild(new SpaceObject({
-	size:     5,
-	color:    'white',
-	distance: 18,
-	speed:    0.6,
-}));
-
-for (let a = 0; a < 300; a++) {
+/*for (let a = 0; a < 300; a++) {
 	sun.addChild(new SpaceObject({
 		size:     2 + Math.floor(Math.random() * 3),
 		color:    'gray',
