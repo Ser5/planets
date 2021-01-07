@@ -31,6 +31,12 @@ let orbitSystem = new class extends System {
 
 
 
+	/*init (so) {
+		this._setCoords(so);
+	}*/
+
+
+
 	move () {
 		objectsTree.process('orbit', so => this._move(so));
 	}
@@ -50,11 +56,16 @@ let orbitSystem = new class extends System {
 
 
 	_setCoords (so) {
-		let orbit     = so.orbit;
-		let lx        = Math.cos(orbit.angle) * orbit.centerDistance;
-		let ly        = Math.sin(orbit.angle) * orbit.centerDistance;
-		so.position.x = so.parent.position.x + lx;
-		so.position.y = so.parent.position.y + ly;
+		let pos   = so.position;
+		let orbit = so.orbit;
+		let lx    = Math.cos(orbit.angle) * orbit.centerDistance;
+		let ly    = Math.sin(orbit.angle) * orbit.centerDistance;
+
+		pos.x = so.parent.position.x + lx;
+		pos.y = so.parent.position.y + ly;
+
+		pos.drawX = view.drawX + pos.x * view.zoom;
+		pos.drawY = view.drawY + pos.y * view.zoom;
 	}
 }();
 

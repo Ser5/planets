@@ -9,6 +9,7 @@ import SpaceObjectsManager from 'space-objects-manager';
 
 import System         from 'system';
 import positionSystem from 'system/position-system';
+import stillSystem    from 'system/move/still-system';
 import orbitSystem    from 'system/move/orbit-system';
 import sphereSystem   from 'system/exterior/sphere-system';
 //import drawSystem     from 'system/draw-system';
@@ -18,6 +19,7 @@ import sphereSystem   from 'system/exterior/sphere-system';
 let sun = SpaceObjectsManager.create({
 	components: {
 		position: {},
+		still:    {},
 		sphere:   {size: 100, color: 'yellow'},
 	},
 });
@@ -184,6 +186,7 @@ resizeView();
 
 
 function animationFrame () {
+	stillSystem.move();
 	orbitSystem.move();
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	sphereSystem.draw();

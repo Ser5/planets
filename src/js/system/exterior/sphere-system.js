@@ -24,13 +24,10 @@ let sphereSystem = new class extends System {
 
 
 	_draw (so) {
-		let drawX = view.drawX + so.position.x * view.zoom;
-		let drawY = view.drawY + so.position.y * view.zoom;
-
 		ctx.beginPath();
 		ctx.fillStyle = so.sphere.color;
 		ctx.arc(
-			drawX, drawY,
+			so.position.drawX, so.position.drawY,
 			so.sphere.radius * view.zoom,
 			0,
 			pi2

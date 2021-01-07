@@ -336,13 +336,9 @@
 	class System {
 		constructor () {}
 
-
-
 		getComponent (data) {}
 
-
-
-		run () {}
+		init () {}
 	}
 
 	let orbitSystem = new class extends System {
@@ -371,6 +367,12 @@
 
 
 
+		/*init (so) {
+			this._setCoords(so);
+		}*/
+
+
+
 		move () {
 			objectsTree.process('orbit', so => this._move(so));
 		}
@@ -390,11 +392,16 @@
 
 
 		_setCoords (so) {
-			let orbit     = so.orbit;
-			let lx        = Math.cos(orbit.angle) * orbit.centerDistance;
-			let ly        = Math.sin(orbit.angle) * orbit.centerDistance;
-			so.position.x = so.parent.position.x + lx;
-			so.position.y = so.parent.position.y + ly;
+			let pos   = so.position;
+			let orbit = so.orbit;
+			let lx    = Math.cos(orbit.angle) * orbit.centerDistance;
+			let ly    = Math.sin(orbit.angle) * orbit.centerDistance;
+
+			pos.x = so.parent.position.x + lx;
+			pos.y = so.parent.position.y + ly;
+
+			pos.drawX = view.drawX + pos.x * view.zoom;
+			pos.drawY = view.drawY + pos.y * view.zoom;
 		}
 	}();
 
@@ -415,9 +422,31 @@
 
 	let positionSystem = new class extends System {
 		getComponent ({spaceObject}) {
-			return {spaceObject, x: 0, y: 0};
+			return {spaceObject, x: 0, y: 0, drawX: 0, drawY: 0};
 		}
 	};
+
+	let stillSystem = new class extends System {
+		getComponent ({spaceObject}) {
+			return {spaceObject};
+		}
+
+
+
+		move () {
+			objectsTree.process('still', so => this._setCoords(so));
+		}
+
+
+
+		_setCoords (so) {
+			let pos = so.position;
+
+			pos.drawX = view.drawX + pos.x * view.zoom;
+			pos.drawY = view.drawY + pos.y * view.zoom;
+			//console.log(`${pos.drawX}:${pos.drawY}`);
+		}
+	}();
 
 	let sphereSystem = new class extends System {
 		getComponent ({spaceObject, size, color}) {
@@ -438,13 +467,10 @@
 
 
 		_draw (so) {
-			let drawX = view.drawX + so.position.x * view.zoom;
-			let drawY = view.drawY + so.position.y * view.zoom;
-
 			ctx.beginPath();
 			ctx.fillStyle = so.sphere.color;
 			ctx.arc(
-				drawX, drawY,
+				so.position.drawX, so.position.drawY,
 				so.sphere.radius * view.zoom,
 				0,
 				pi2
@@ -454,11 +480,50 @@
 		}
 	};
 
+	let discSystem = new class extends System {
+		getComponent ({spaceObject, size, color}) {
+			return {
+				spaceObject,
+				size,
+				color,
+				...{radius: size / 2}
+			};
+		}
+
+
+
+		draw () {
+			objectsTree.process('disc', so => this._draw(so));
+		}
+
+
+
+		_draw (so) {
+			so.position = {...so.parent.position};
+
+			ctx.beginPath();
+			ctx.strokeStyle = this.color;
+			ctx.lineWidth   = this.size * view.zoom;
+			let diameter =
+				(this.parent.radius + this.distance) * view.zoom +
+				this.size * view.zoom / 2;
+			ctx.arc(
+				this.drawX, this.drawY,
+				diameter,
+				0, pi2
+			);
+			//console.log(`(${this.parent.radius} + ${this.distance}) * ${view.zoom} + ${this.size} * view.zoom / 2 = ${diameter}`);
+			ctx.stroke();
+		}
+	};
+
 	let componentsFactory = new class {
 		constructor () {
 			this.position = positionSystem;
+			this.still    = stillSystem;
 			this.orbit    = orbitSystem;
 			this.sphere   = sphereSystem;
+			this.disc     = discSystem;
 		}
 
 
@@ -466,6 +531,13 @@
 		get (name, data) {
 			return this[name].getComponent(data);
 		}
+
+
+
+
+		/*init (spaceObject, componentName) {
+			return this[componentName].init(spaceObject);
+		}*/
 	}();
 
 	let spaceObjectsManager = new class {
@@ -480,6 +552,7 @@
 			for (let [name, data] of Object.entries(components)) {
 				let c = componentsFactory.get(name, {...data, spaceObject});
 				spaceObject.setComponent(name, c);
+				//componentsFactory.init(spaceObject, name);
 			}
 
 			return spaceObject;
@@ -493,6 +566,7 @@
 	let sun = spaceObjectsManager.create({
 		components: {
 			position: {},
+			still:    {},
 			sphere:   {size: 100, color: 'yellow'},
 		},
 	});
@@ -659,6 +733,7 @@
 
 
 	function animationFrame () {
+		stillSystem.move();
 		orbitSystem.move();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		sphereSystem.draw();
