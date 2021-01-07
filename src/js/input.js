@@ -111,11 +111,11 @@ let input = new class {
 		let rect          = canvas.getBoundingClientRect();
 		let distance      = 1000000;
 		let clickedObject = null;
-		objectsTree.process(so => {
+		objectsTree.process(false, so => {
 			let clickedX = this.down.x - rect.left;
 			let clickedY = this.down.y - rect.top;
-			let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
-			//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.drawX}:${so.drawY}`);
+			let d = getDistance(clickedX, clickedY, so.position.drawX, so.position.drawY);
+			//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.position.drawX}:${so.position.drawY}`);
 			if (d < distance) {
 				distance      = d;
 				clickedObject = so;

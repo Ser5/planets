@@ -49,7 +49,6 @@ let earth = SpaceObjectsManager.create({
 		sphere:   {size: 25, color: 'green'},
 	},
 });
-
 SpaceObjectsManager.create({
 	parent:     earth,
 	components: {
@@ -209,7 +208,7 @@ function animationFrame () {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	sphereSystem.draw();
 	discSystem.draw();
-	//view.continueMoving();
+	view.continueMoving();
 	window.requestAnimationFrame(animationFrame);
 }
 

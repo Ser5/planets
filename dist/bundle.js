@@ -139,14 +139,15 @@
 			if (this.state != 'moving') {
 				return;
 			}
-			let distance     = getDistance(this._x, this._y, this.toObject.x, this.toObject.y);
-			let moveDistance = (distance >= 20) ? 20 : distance;
-			let coeff        = distance / moveDistance;
-			let moveX        = (this.toObject.x - this._x) / coeff;// * view.zoom;
-			let moveY        = (this.toObject.y - this._y) / coeff;// * view.zoom;
+			let {x:toX, y:toY} = this.toObject.position;
+			let distance       = getDistance(this._x, this._y, toX, toY);
+			let moveDistance   = (distance >= 20) ? 20 : distance;
+			let coeff          = distance / moveDistance;
+			let moveX          = (toX - this._x) / coeff;// * view.zoom;
+			let moveY          = (toY - this._y) / coeff;// * view.zoom;
 			this._x += moveX;
 			this._y += moveY;
-			//console.log(`${this._x}:${this._y} -> ${this.toObject.x}:${this.toObject.y} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
+			//console.log(`${this._x}:${this._y} -> ${toX}:${toY} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
 			if (moveDistance < 20) {
 				this.spaceObject = this.toObject;
 				this.state = 'std';
@@ -184,7 +185,7 @@
 		}
 
 		_process (componentFilter, spaceObject, callback) {
-			if (componentFilter && spaceObject[componentFilter]) {
+			if (!componentFilter || spaceObject[componentFilter]) {
 				callback(spaceObject);
 			}
 			if (spaceObject.children.length) {
@@ -309,11 +310,11 @@
 			let rect          = canvas.getBoundingClientRect();
 			let distance      = 1000000;
 			let clickedObject = null;
-			objectsTree.process(so => {
+			objectsTree.process(false, so => {
 				let clickedX = this.down.x - rect.left;
 				let clickedY = this.down.y - rect.top;
-				let d = getDistance(clickedX, clickedY, so.drawX, so.drawY);
-				//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.drawX}:${so.drawY}`);
+				let d = getDistance(clickedX, clickedY, so.position.drawX, so.position.drawY);
+				//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.position.drawX}:${so.position.drawY}`);
 				if (d < distance) {
 					distance      = d;
 					clickedObject = so;
@@ -599,7 +600,6 @@
 			sphere:   {size: 25, color: 'green'},
 		},
 	});
-
 	spaceObjectsManager.create({
 		parent:     earth,
 		components: {
@@ -759,7 +759,7 @@
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		sphereSystem.draw();
 		discSystem.draw();
-		//view.continueMoving();
+		view.continueMoving();
 		window.requestAnimationFrame(animationFrame);
 	}
 

@@ -128,14 +128,15 @@ let view = new class {
 		if (this.state != 'moving') {
 			return;
 		}
-		let distance     = getDistance(this._x, this._y, this.toObject.x, this.toObject.y);
-		let moveDistance = (distance >= 20) ? 20 : distance;
-		let coeff        = distance / moveDistance;
-		let moveX        = (this.toObject.x - this._x) / coeff;// * view.zoom;
-		let moveY        = (this.toObject.y - this._y) / coeff;// * view.zoom;
+		let {x:toX, y:toY} = this.toObject.position;
+		let distance       = getDistance(this._x, this._y, toX, toY);
+		let moveDistance   = (distance >= 20) ? 20 : distance;
+		let coeff          = distance / moveDistance;
+		let moveX          = (toX - this._x) / coeff;// * view.zoom;
+		let moveY          = (toY - this._y) / coeff;// * view.zoom;
 		this._x += moveX;
 		this._y += moveY;
-		//console.log(`${this._x}:${this._y} -> ${this.toObject.x}:${this.toObject.y} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
+		//console.log(`${this._x}:${this._y} -> ${toX}:${toY} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
 		if (moveDistance < 20) {
 			this.spaceObject = this.toObject;
 			this.state = 'std';

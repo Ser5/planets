@@ -9,7 +9,7 @@ let objectsTree = new class {
 	}
 
 	_process (componentFilter, spaceObject, callback) {
-		if (componentFilter && spaceObject[componentFilter]) {
+		if (!componentFilter || spaceObject[componentFilter]) {
 			callback(spaceObject);
 		}
 		if (spaceObject.children.length) {
