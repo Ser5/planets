@@ -13,28 +13,6 @@
 		return d;
 	}
 
-	let objectsTree = new class {
-		constructor () {
-			this.root = null;
-		}
-
-		process (componentFilter, callback) {
-			//console.log(this.root);
-			this._process(componentFilter, this.root, callback);
-		}
-
-		_process (componentFilter, spaceObject, callback) {
-			if (componentFilter && spaceObject[componentFilter]) {
-				callback(spaceObject);
-			}
-			if (spaceObject.children.length) {
-				for (let so of spaceObject.children) {
-					this._process(componentFilter, so, callback);
-				}
-			}
-		}
-	}();
-
 	/**
 	 * Управление обзором.
 	 *
@@ -192,6 +170,28 @@
 		stopDragging () {
 			//console.log('stop drag');
 			this.state = 'free';
+		}
+	}();
+
+	let objectsTree = new class {
+		constructor () {
+			this.root = null;
+		}
+
+		process (componentFilter, callback) {
+			//console.log(this.root);
+			this._process(componentFilter, this.root, callback);
+		}
+
+		_process (componentFilter, spaceObject, callback) {
+			if (componentFilter && spaceObject[componentFilter]) {
+				callback(spaceObject);
+			}
+			if (spaceObject.children.length) {
+				for (let so of spaceObject.children) {
+					this._process(componentFilter, so, callback);
+				}
+			}
 		}
 	}();
 
@@ -397,40 +397,16 @@
 
 	class SpaceObject {
 		constructor (data) {
-			data = {
-				...{
-					components: (so)=>{},
-					parent:     null,
-					children:   [],
-				},
-				...data
-			};
-			for (let [k,v] of Object.entries(data)) {
-				this[k] = v;
-			}
-			for (let [k,v] of Object.entries(data.components(this))) {
-				this[k] = v;
-			}
+			this.parent     = null;
+			this.children   = [];
 		}
 
 
-		c            (code)            { return this.components[code]; }
-		setComponent (code, component) { this.components[code] = component; }
-
-
-		get drawX () { return view.drawX + this.x*view.zoom; }
-		get drawY () { return view.drawY + this.y*view.zoom; }
+		setComponent (name, component) { this[name] = component; }
 
 
 		addChild (child) {
-			child.setParent(this);
 			this.children.push(child);
-		}
-
-
-		setParent (parent) {
-			this.parent = parent;
-			orbitSystem.initValues(this);
 		}
 	}
 
@@ -475,36 +451,68 @@
 		}
 	};
 
+	let componentsFactory = new class {
+		constructor () {
+			this.position = positionSystem;
+			this.orbit    = orbitSystem;
+			this.sphere   = sphereSystem;
+		}
+
+
+
+		get (name, data) {
+			return this[name].getComponent(data);
+		}
+	}();
+
+	let spaceObjectsManager = new class {
+		create ({parent = null, components = {}}) {
+			let spaceObject = new SpaceObject();
+
+			if (parent) {
+				parent.addChild(spaceObject);
+				spaceObject.parent = parent;
+			}
+
+			for (let [name, data] of Object.entries(components)) {
+				let c = componentsFactory.get(name, {...data, spaceObject});
+				spaceObject.setComponent(name, c);
+			}
+
+			return spaceObject;
+		}
+	}();
+
 	//import drawSystem     from 'system/draw-system';
 
 
 
-	let sun = new SpaceObject({
-		components: spaceObject => ({
-			position: positionSystem.getComponent({spaceObject, x:0, y:0}),
-			sphere:   sphereSystem.getComponent(  {spaceObject, size: 100, color: 'yellow'}),
-		}),
+	let sun = spaceObjectsManager.create({
+		components: {
+			position: {x: 0, y: 0},
+			sphere:   {size: 100, color: 'yellow'},
+		},
 	});
-	sun.addChild(new SpaceObject({
+	/*sun.addChild(new SpaceObject({
 		components: spaceObject => ({
 			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 30, speed: 2}),
-			sphere:   sphereSystem.getComponent(  {spaceObject, size: 8, color: 'white'}),
+			orbit:    orbitSystem.getComponent(   {distance: 30, speed: 2}),
+			sphere:   sphereSystem.getComponent(  {size: 8, color: 'white'}),
 		}),
 	}));
 	sun.addChild(new SpaceObject({
 		components: spaceObject => ({
 			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 70, speed: 1.5}),
-			sphere:   sphereSystem.getComponent(  {spaceObject, size: 20, color: 'orange'}),
+			orbit:    orbitSystem.getComponent(   {distance: 70, speed: 1.5}),
+			sphere:   sphereSystem.getComponent(  {size: 20, color: 'orange'}),
 		}),
 	}));
 
 	let earth = new SpaceObject({
 		components: spaceObject => ({
 			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 140, speed: 1.2}),
-			sphere:   sphereSystem.getComponent(  {spaceObject, size: 25, color: 'green'}),
+			orbit:    orbitSystem.getComponent(   {distance: 140, speed: 1.2}),
+			sphere:   sphereSystem.getComponent(  {size: 25, color: 'green'}),
 		}),
 	});
 	sun.addChild(earth);
@@ -512,10 +520,10 @@
 	earth.addChild(new SpaceObject({
 		components: spaceObject => ({
 			position: positionSystem.getComponent({spaceObject}),
-			orbit:    orbitSystem.getComponent(   {spaceObject, distance: 12, speed: 1}),
-			sphere:   sphereSystem.getComponent(  {spaceObject, size: 5, color: 'white'}),
+			orbit:    orbitSystem.getComponent(   {distance: 12, speed: 1}),
+			sphere:   sphereSystem.getComponent(  {size: 5, color: 'white'}),
 		}),
-	}));
+	}));*/
 
 	/*let mars = new SpaceObject({
 		size:     17,

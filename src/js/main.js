@@ -1,10 +1,11 @@
 import {canvas, ctx} from 'init';
-import objectsTree   from 'objects-tree';
 
 import view          from 'view';
 import input         from 'input';
 
-import SpaceObject   from 'space-object';
+import objectsTree         from 'objects-tree';
+import SpaceObject         from 'space-object';
+import SpaceObjectsManager from 'space-objects-manager';
 
 import System         from 'system';
 import positionSystem from 'system/position-system';
@@ -14,32 +15,32 @@ import sphereSystem   from 'system/exterior/sphere-system';
 
 
 
-let sun = new SpaceObject({
-	components: spaceObject => ({
-		position: positionSystem.getComponent({spaceObject, x:0, y:0}),
-		sphere:   sphereSystem.getComponent(  {spaceObject, size: 100, color: 'yellow'}),
-	}),
+let sun = SpaceObjectsManager.create({
+	components: {
+		position: {x: 0, y: 0},
+		sphere:   {size: 100, color: 'yellow'},
+	},
 });
-sun.addChild(new SpaceObject({
+/*sun.addChild(new SpaceObject({
 	components: spaceObject => ({
 		position: positionSystem.getComponent({spaceObject}),
-		orbit:    orbitSystem.getComponent(   {spaceObject, distance: 30, speed: 2}),
-		sphere:   sphereSystem.getComponent(  {spaceObject, size: 8, color: 'white'}),
+		orbit:    orbitSystem.getComponent(   {distance: 30, speed: 2}),
+		sphere:   sphereSystem.getComponent(  {size: 8, color: 'white'}),
 	}),
 }));
 sun.addChild(new SpaceObject({
 	components: spaceObject => ({
 		position: positionSystem.getComponent({spaceObject}),
-		orbit:    orbitSystem.getComponent(   {spaceObject, distance: 70, speed: 1.5}),
-		sphere:   sphereSystem.getComponent(  {spaceObject, size: 20, color: 'orange'}),
+		orbit:    orbitSystem.getComponent(   {distance: 70, speed: 1.5}),
+		sphere:   sphereSystem.getComponent(  {size: 20, color: 'orange'}),
 	}),
 }));
 
 let earth = new SpaceObject({
 	components: spaceObject => ({
 		position: positionSystem.getComponent({spaceObject}),
-		orbit:    orbitSystem.getComponent(   {spaceObject, distance: 140, speed: 1.2}),
-		sphere:   sphereSystem.getComponent(  {spaceObject, size: 25, color: 'green'}),
+		orbit:    orbitSystem.getComponent(   {distance: 140, speed: 1.2}),
+		sphere:   sphereSystem.getComponent(  {size: 25, color: 'green'}),
 	}),
 });
 sun.addChild(earth);
@@ -47,10 +48,10 @@ sun.addChild(earth);
 earth.addChild(new SpaceObject({
 	components: spaceObject => ({
 		position: positionSystem.getComponent({spaceObject}),
-		orbit:    orbitSystem.getComponent(   {spaceObject, distance: 12, speed: 1}),
-		sphere:   sphereSystem.getComponent(  {spaceObject, size: 5, color: 'white'}),
+		orbit:    orbitSystem.getComponent(   {distance: 12, speed: 1}),
+		sphere:   sphereSystem.getComponent(  {size: 5, color: 'white'}),
 	}),
-}));
+}));*/
 
 /*let mars = new SpaceObject({
 	size:     17,
