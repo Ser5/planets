@@ -1,12 +1,18 @@
 import {ctx, pi2}  from 'init';
 import objectsTree from 'objects-tree';
 import view        from 'view';
+import SpaceObject from 'space-object';
 import System      from 'system';
+import IDrawable   from 'system/exterior/i/idrawable';
+import ISphere     from 'system/exterior/i/isphere';
 
 
 
-let sphereSystem = new class extends System {
-	getComponent ({spaceObject, size, color}) {
+let sphereSystem = new class extends System implements IDrawable {
+	getComponent (
+		{spaceObject,              size,         color}:
+		{spaceObject: SpaceObject, size: number, color: string}
+	): ISphere {
 		return {
 			spaceObject,
 			size,
@@ -23,7 +29,7 @@ let sphereSystem = new class extends System {
 
 
 
-	_draw (so) {
+	_draw (so: SpaceObject) {
 		ctx.beginPath();
 		ctx.fillStyle = so.sphere.color;
 		ctx.arc(

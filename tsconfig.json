@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		//"traceResolution": true,
+		"allowJs":          true,
+		"checkJs":          true,
+		"target":           "ES2020",
+		"moduleResolution": "node",
+		"baseUrl":          "./src/js/",
+		//"rootDir":          "./src/js/",
+		"outDir": "tsout",
+		"paths": {
+			"*": ["*"],
+		}
+	}
+}

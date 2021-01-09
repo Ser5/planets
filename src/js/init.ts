@@ -4,20 +4,14 @@ export let ctx              = canvas.getContext('2d');
 export let pi2              = Math.PI * 2;
 export let spaceObjectsList = [];
 
-export let rootObject = {
-	get ()   { return this.value; },
-	set (so) { this.value = so; },
-};
-
-
-export function dtr (d) {
+export function dtr (d: number): number {
 	return d * (pi2 / 360);
 }
-export function rtd (r) {
+export function rtd (r: number): number {
 	return r / pi2 * 360;
 }
 
-export function getDistance (x1, y1, x2, y2) {
+export function getDistance (x1: number, y1: number, x2: number, y2: number): number {
 	let xDistance = x1 - x2;
 	let yDistance = y1 - y2;
 	let d         = Math.sqrt(xDistance**2 + yDistance**2);

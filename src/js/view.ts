@@ -1,4 +1,7 @@
-import {getDistance} from './init.js';
+import {getDistance} from 'init';
+import SpaceObject   from 'space-object';
+
+enum State {Std, Moving, Dragging, Free};
 
 
 
@@ -75,13 +78,26 @@ import {getDistance} from './init.js';
  * верхнего угла канваса.
  */
 let view = new class {
+	private _zoomLevelsList: number[];
+	private _state:          State;
+	private _spaceObject:    SpaceObject;
+	public  centerX:         number;
+	public  centerY:         number;
+	private _dragStartX:     number;
+	private _dragStartY:     number;
+	private _x:              number;
+	private _y:              number;
+	private _zoomLevel:      number;
+	private _zoom:           number;
+	public  toObject:        SpaceObject;
+
 	constructor () {
 		this._zoomLevelsList = [
 			0.3, 0.4, 0.5, 0.6, 0.8,
 			1,
 			1.5, 2, 3, 4, 5,
 		];
-		this.state        = 'std';
+		this._state       = State.Std;
 		this._spaceObject = null;
 		this.centerX      = 0;
 		this.centerY      = 0;
@@ -96,36 +112,36 @@ let view = new class {
 	}
 
 	get spaceObject ()   { return this._spaceObject; }
-	set spaceObject (so) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
+	set spaceObject (so: SpaceObject) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
 
-	get x () { return this.state == 'std' ? this._spaceObject.position.x : this._x; }
-	get y () { return this.state == 'std' ? this._spaceObject.position.y : this._y; }
+	get x () { return this._state == State.Std ? this._spaceObject.position.x : this._x; }
+	get y () { return this._state == State.Std ? this._spaceObject.position.y : this._y; }
+
+	get zoom ()  { return this._zoom; }
 
 	get drawX () { return this.centerX - this.x * this.zoom; }
 	get drawY () { return this.centerY - this.y * this.zoom; }
-
-	get zoom ()  { return this._zoom; }
 
 	zoomIn  () { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
 	zoomOut () { this._zoomLevel = Math.max(this._zoomLevel - 1, 0);                               this._setZoom(); }
 
 	_setZoom() { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
 
-	startMoving (so) {
+	startMoving (so: SpaceObject) {
 		if (so == this.spaceObject) {
 			return;
 		}
-		if (this.state == 'std') {
+		if (this._state == State.Std) {
 			this._x = this._spaceObject.position.x;
 			this._y = this._spaceObject.position.y;
 		}
-		this.state    = 'moving';
+		this._state    = State.Moving;
 		this.toObject = so;
 		this.continueMoving();
 	}
 
 	continueMoving () {
-		if (this.state != 'moving') {
+		if (this._state != State.Moving) {
 			return;
 		}
 		let {x:toX, y:toY} = this.toObject.position;
@@ -139,17 +155,17 @@ let view = new class {
 		//console.log(`${this._x}:${this._y} -> ${toX}:${toY} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
 		if (moveDistance < 20) {
 			this.spaceObject = this.toObject;
-			this.state = 'std';
+			this._state = State.Std;
 			//console.log(this.spaceObject);
 		}
 	}
 
-	drag (offset) {
-		if (this.state != 'dragging') {
+	drag (offset: {x:number, y:number}) {
+		if (this._state != State.Dragging) {
 			this._dragStartX  = this.x;
 			this._dragStartY  = this.y;
 			this._spaceObject = null;
-			this.state        = 'dragging';
+			this._state        = State.Dragging;
 			//console.log(`start drag from ${this._dragStartX}:${this._dragStartY}`);
 		}
 		this._x = this._dragStartX - offset.x / this.zoom;
@@ -159,7 +175,7 @@ let view = new class {
 
 	stopDragging () {
 		//console.log('stop drag');
-		this.state = 'free';
+		this._state = State.Free;
 	}
 }();
 

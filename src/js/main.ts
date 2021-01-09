@@ -1,19 +1,18 @@
-import {canvas, ctx, rtd} from 'init';
+import {canvas, ctx, rtd}  from 'init';
 
-import view          from 'view';
-import input         from 'input';
+import view                from 'view';
+import input               from 'input';
 
 import objectsTree         from 'objects-tree';
 import SpaceObject         from 'space-object';
 import SpaceObjectsManager from 'space-objects-manager';
 
-import System         from 'system';
-import positionSystem from 'system/position-system';
-import stillSystem    from 'system/move/still-system';
-import orbitSystem    from 'system/move/orbit-system';
-import sphereSystem   from 'system/exterior/sphere-system';
-import discSystem     from 'system/exterior/disc-system';
-//import drawSystem     from 'system/draw-system';
+import System              from 'system';
+import positionSystem      from 'system/position-system';
+import stillSystem         from 'system/move/still-system';
+import orbitSystem         from 'system/move/orbit-system';
+import sphereSystem        from 'system/exterior/sphere-system';
+import discSystem          from 'system/exterior/disc-system';
 
 
 

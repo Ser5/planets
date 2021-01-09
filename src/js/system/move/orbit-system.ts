@@ -2,16 +2,22 @@ import {ctx, pi2, rtd}  from 'init';
 import objectsTree from 'objects-tree';
 import view        from 'view';
 import System      from 'system';
+import IMovable    from 'system/move/i/imovable';
+import IOrbit      from 'system/move/i/iorbit';
+import SpaceObject from 'space-object';
 
 
 
-let orbitSystem = new class extends System {
-	getComponent ({spaceObject, distance, speed}) {
+let orbitSystem = new class extends System implements IMovable {
+	getComponent (
+		{spaceObject,              distance,         speed}:
+		{spaceObject: SpaceObject, distance: number, speed: number}
+	): IOrbit {
 		let centerDistance = spaceObject.parent.sphere.radius + distance;
-		let angle          = Math.random() * pi2;
+		let angle          = Math.random()  * pi2;
 		let orbitLength    = centerDistance * pi2;
 		let orbitPartSize  = speed / orbitLength;
-		let moveAngle      = pi2 * orbitPartSize;
+		let moveAngle      = pi2   * orbitPartSize;
 
 		/*console.log(`Расстояние от центра: ${spaceObject.parent.sphere.radius} + ${distance} = ${centerDistance}`);
 		console.log(`Начальный угол: ${angle}`);
@@ -31,19 +37,13 @@ let orbitSystem = new class extends System {
 
 
 
-	/*init (so) {
-		this._setCoords(so);
-	}*/
-
-
-
 	move () {
 		objectsTree.process('orbit', so => this._move(so));
 	}
 
 
 
-	_move (so) {
+	_move (so: SpaceObject) {
 		let orbit = so.orbit;
 		//console.log(orbit.moveAngle);
 		orbit.angle += orbit.moveAngle;
@@ -55,7 +55,7 @@ let orbitSystem = new class extends System {
 
 
 
-	_setCoords (so) {
+	_setCoords (so: SpaceObject) {
 		let pos   = so.position;
 		let orbit = so.orbit;
 		let lx    = Math.cos(orbit.angle) * orbit.centerDistance;

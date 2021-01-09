@@ -4,7 +4,11 @@ import componentsFactory from 'components-factory';
 
 
 let spaceObjectsManager = new class {
-	create ({parent = null, components = {}}) {
+	create (
+		{parent = null,        components = {}}:
+		{parent?: SpaceObject, components?: object}
+	): SpaceObject
+	{
 		let spaceObject = new SpaceObject();
 
 		if (parent) {

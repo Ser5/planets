@@ -3,11 +3,18 @@ import objectsTree           from 'objects-tree';
 import view                  from 'view';
 import MouseInput            from 'mouse-input';
 
+enum State {Std, Mousedown, Drag};
+
 
 
 let input = new class {
+	private state: State;
+	private down:  MouseInput;
+	private up:    MouseInput;
+	private move:  MouseInput;
+
 	constructor () {
-		this.state = 'std';
+		this.state = State.Std;
 		this.down  = null;
 		this.up    = null;
 		this.move  = null;
@@ -41,20 +48,20 @@ let input = new class {
 		let e     = data.e;
 		if (m == 'mousedown') {
 			this.down = new MouseInput(e);
-			if (state == 'std') {
-				this.state = 'mousedown';
+			if (state == State.Std) {
+				this.state = State.Mousedown;
 			}
 		}
 		else if (m == 'mousemove') {
-			if (state == 'mousedown') {
+			if (state == State.Mousedown) {
 				this.move = new MouseInput(e);
 				if (this._isMovedForDrag(this.move)) {
 					canvas.style.cursor = 'grab';
-					this.state          = 'drag';
+					this.state          = State.Drag;
 					this._drag();
 				}
 			}
-			if (state == 'drag') {
+			if (state == State.Drag) {
 				this.move = new MouseInput(e);
 				this._drag();
 			}
@@ -62,13 +69,13 @@ let input = new class {
 		else if (m == 'mouseup') {
 			this.up = new MouseInput(e);
 			canvas.style.cursor = null;
-			if (state == 'mousedown' || state == 'drag') {
-				if (state == 'drag') {
-					this.state = 'std';
+			if (state == State.Mousedown || state == State.Drag) {
+				if (state == State.Drag) {
+					this.state = State.Std;
 					view.stopDragging();
 				}
 				if (this._isTimedForFocus() && !this._isMovedForDrag(this.up)) {
-					this.state = 'std';
+					this.state = State.Std;
 					this._click();
 				}
 			}
@@ -76,9 +83,9 @@ let input = new class {
 		else if (m == 'mouseleave') {
 			this.up = new MouseInput(e);
 			canvas.style.cursor = null;
-			if (state == 'mousedown' || state == 'drag') {
-				if (state == 'drag') {
-					this.state = 'std';
+			if (state == State.Mousedown || state == State.Drag) {
+				if (state == State.Drag) {
+					this.state = State.Std;
 					view.stopDragging();
 				}
 			}
@@ -86,7 +93,7 @@ let input = new class {
 		else if (m == 'mouseenter') {
 			if (e.buttons & 1) {
 				this.down = new MouseInput(e);
-				this.state = 'mousedown';
+				this.state = State.Mousedown;
 			}
 		}
 
