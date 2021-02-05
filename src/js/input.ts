@@ -1,7 +1,8 @@
-import {canvas, getDistance} from 'init';
+import {canvasesBlock, getDistance} from 'init';
 import objectsTree           from 'objects-tree';
 import view                  from 'view';
 import MouseInput            from 'mouse-input';
+import focusSystem           from 'system/focus-system';
 
 enum State {Std, Mousedown, Drag};
 
@@ -19,6 +20,7 @@ let input = new class {
 		this.up    = null;
 		this.move  = null;
 	}
+
 
 
 	/**
@@ -39,11 +41,8 @@ let input = new class {
 	 * - std
 	 * - mousedown
 	 * -
-	 *
-	 * @param {String} m
-	 * @param {Object} data
 	 */
-	notify (m, data) {
+	notify (m: string, data: any) {
 		let state = this.state;
 		let e     = data.e;
 		if (m == 'mousedown') {
@@ -56,7 +55,7 @@ let input = new class {
 			if (state == State.Mousedown) {
 				this.move = new MouseInput(e);
 				if (this._isMovedForDrag(this.move)) {
-					canvas.style.cursor = 'grab';
+					canvasesBlock.style.cursor = 'grab';
 					this.state          = State.Drag;
 					this._drag();
 				}
@@ -68,7 +67,7 @@ let input = new class {
 		}
 		else if (m == 'mouseup') {
 			this.up = new MouseInput(e);
-			canvas.style.cursor = null;
+			canvasesBlock.style.cursor = null;
 			if (state == State.Mousedown || state == State.Drag) {
 				if (state == State.Drag) {
 					this.state = State.Std;
@@ -82,7 +81,7 @@ let input = new class {
 		}
 		else if (m == 'mouseleave') {
 			this.up = new MouseInput(e);
-			canvas.style.cursor = null;
+			canvasesBlock.style.cursor = null;
 			if (state == State.Mousedown || state == State.Drag) {
 				if (state == State.Drag) {
 					this.state = State.Std;
@@ -103,6 +102,7 @@ let input = new class {
 	}
 
 
+
 	_isTimedForFocus () {
 		let timeDiff = this.up.time - this.down.time;
 		return (timeDiff <= 500);
@@ -114,23 +114,12 @@ let input = new class {
 	}
 
 
+
 	_click () {
-		let rect          = canvas.getBoundingClientRect();
-		let distance      = 1000000;
-		let clickedObject = null;
-		objectsTree.process(false, so => {
-			let clickedX = this.down.x - rect.left;
-			let clickedY = this.down.y - rect.top;
-			let d = getDistance(clickedX, clickedY, so.position.drawX, so.position.drawY);
-			//console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.position.drawX}:${so.position.drawY}`);
-			if (d < distance) {
-				distance      = d;
-				clickedObject = so;
-			}
-		});
-		//console.log(clickedObject);
+		let clickedObject = focusSystem.getNearestSpaceObject(this.down.x, this.down.y);
 		view.startMoving(clickedObject);
 	}
+
 
 
 	_drag () {

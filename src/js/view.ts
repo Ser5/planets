@@ -1,5 +1,6 @@
 import {getDistance} from 'init';
 import SpaceObject   from 'space-object';
+import drawSystem    from 'system/draw/draw-system';
 
 enum State {Std, Moving, Dragging, Free};
 
@@ -78,36 +79,24 @@ enum State {Std, Moving, Dragging, Free};
  * верхнего угла канваса.
  */
 let view = new class {
-	private _zoomLevelsList: number[];
-	private _state:          State;
-	private _spaceObject:    SpaceObject;
-	public  centerX:         number;
-	public  centerY:         number;
-	private _dragStartX:     number;
-	private _dragStartY:     number;
-	private _x:              number;
-	private _y:              number;
-	private _zoomLevel:      number;
-	private _zoom:           number;
-	public  toObject:        SpaceObject;
+	private _zoomLevelsList: number[] = [
+		0.3, 0.4, 0.5, 0.6, 0.8,
+		1,
+		1.5, 2, 3, 4, 5,
+	];
+	private _state:       State       = State.Std;
+	private _spaceObject: SpaceObject = null;
+	public  centerX:      number      = 0;
+	public  centerY:      number      = 0;
+	private _dragStartX:  number      = 0;
+	private _dragStartY:  number      = 0;
+	private _x:           number      = 0;
+	private _y:           number      = 0;
+	private _zoomLevel:   number      = 5;
+	private _zoom:        number      = null;
+	public  toObject:     SpaceObject = null;
 
 	constructor () {
-		this._zoomLevelsList = [
-			0.3, 0.4, 0.5, 0.6, 0.8,
-			1,
-			1.5, 2, 3, 4, 5,
-		];
-		this._state       = State.Std;
-		this._spaceObject = null;
-		this.centerX      = 0;
-		this.centerY      = 0;
-		this._dragStartX  = 0;
-		this._dragStartY  = 0;
-		this._x           = 0;
-		this._y           = 0;
-		this._zoomLevel   = 5;
-		this._zoom        = null;
-		this.toObject     = null;
 		this._setZoom();
 	}
 
@@ -118,9 +107,6 @@ let view = new class {
 	get y () { return this._state == State.Std ? this._spaceObject.position.y : this._y; }
 
 	get zoom ()  { return this._zoom; }
-
-	get drawX () { return this.centerX - this.x * this.zoom; }
-	get drawY () { return this.centerY - this.y * this.zoom; }
 
 	zoomIn  () { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
 	zoomOut () { this._zoomLevel = Math.max(this._zoomLevel - 1, 0);                               this._setZoom(); }
@@ -135,7 +121,8 @@ let view = new class {
 			this._x = this._spaceObject.position.x;
 			this._y = this._spaceObject.position.y;
 		}
-		this._state    = State.Moving;
+		//console.log(`startMoving ${this._x}:${this._y}`);
+		this._state   = State.Moving;
 		this.toObject = so;
 		this.continueMoving();
 	}
@@ -145,17 +132,22 @@ let view = new class {
 			return;
 		}
 		let {x:toX, y:toY} = this.toObject.position;
-		let distance       = getDistance(this._x, this._y, toX, toY);
-		let moveDistance   = (distance >= 20) ? 20 : distance;
-		let coeff          = distance / moveDistance;
-		let moveX          = (toX - this._x) / coeff;// * view.zoom;
-		let moveY          = (toY - this._y) / coeff;// * view.zoom;
-		this._x += moveX;
-		this._y += moveY;
-		//console.log(`${this._x}:${this._y} -> ${toX}:${toY} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
-		if (moveDistance < 20) {
+		//console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${this.toObject.draw.x}:${this.toObject.draw.y}.`);
+		let distance = getDistance(this._x, this._y, toX, toY);
+		if (distance >= 20) {
+			let coeff = distance / 20;
+			let moveX = (toX - this._x) / coeff;
+			let moveY = (toY - this._y) / coeff;
+			//console.log(`Из ${this._x}:${this._y} в ${toX}:${toY} расстояние ${distance}, 20 -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
+			//throw '';
+			this._x += moveX;
+			this._y += moveY;
+		} else {
+			this._x          = toX;
+			this._y          = toY;
 			this.spaceObject = this.toObject;
-			this._state = State.Std;
+			this._state      = State.Std;
+			//console.log('stop moving');
 			//console.log(this.spaceObject);
 		}
 	}
@@ -165,11 +157,11 @@ let view = new class {
 			this._dragStartX  = this.x;
 			this._dragStartY  = this.y;
 			this._spaceObject = null;
-			this._state        = State.Dragging;
+			this._state       = State.Dragging;
 			//console.log(`start drag from ${this._dragStartX}:${this._dragStartY}`);
 		}
 		this._x = this._dragStartX - offset.x / this.zoom;
-		this._y = this._dragStartY - offset.y / this.zoom;
+		this._y = this._dragStartY + offset.y / this.zoom ;
 		//console.log(`${this._dragStartX} - ${offset.x} = ${this._x}`);
 	}
 

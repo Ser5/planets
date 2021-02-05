@@ -1,10 +1,13 @@
-(function () {
+(function (THREE) {
     'use strict';
 
     let html = document.querySelector('html');
-    let canvas = document.querySelector('canvas');
-    let ctx = canvas.getContext('2d');
+    let canvasesBlock = document.querySelector('.canvases-block');
+    let canvas2d = document.querySelector('.canvas2d');
+    let canvas3d = document.querySelector('.canvas3d');
+    let ctx = canvas2d.getContext('2d');
     let pi2 = Math.PI * 2;
+    let angle270 = Math.PI * 1.5;
     function getDistance(x1, y1, x2, y2) {
         let xDistance = x1 - x2;
         let yDistance = y1 - y2;
@@ -116,8 +119,6 @@
         get x() { return this._state == State.Std ? this._spaceObject.position.x : this._x; }
         get y() { return this._state == State.Std ? this._spaceObject.position.y : this._y; }
         get zoom() { return this._zoom; }
-        get drawX() { return this.centerX - this.x * this.zoom; }
-        get drawY() { return this.centerY - this.y * this.zoom; }
         zoomIn() { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
         zoomOut() { this._zoomLevel = Math.max(this._zoomLevel - 1, 0); this._setZoom(); }
         _setZoom() { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
@@ -129,6 +130,7 @@
                 this._x = this._spaceObject.position.x;
                 this._y = this._spaceObject.position.y;
             }
+            //console.log(`startMoving ${this._x}:${this._y}`);
             this._state = State.Moving;
             this.toObject = so;
             this.continueMoving();
@@ -138,17 +140,23 @@
                 return;
             }
             let { x: toX, y: toY } = this.toObject.position;
+            //console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${this.toObject.draw.x}:${this.toObject.draw.y}.`);
             let distance = getDistance(this._x, this._y, toX, toY);
-            let moveDistance = (distance >= 20) ? 20 : distance;
-            let coeff = distance / moveDistance;
-            let moveX = (toX - this._x) / coeff; // * view.zoom;
-            let moveY = (toY - this._y) / coeff; // * view.zoom;
-            this._x += moveX;
-            this._y += moveY;
-            //console.log(`${this._x}:${this._y} -> ${toX}:${toY} = ${distance}, ${moveDistance} -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
-            if (moveDistance < 20) {
+            if (distance >= 20) {
+                let coeff = distance / 20;
+                let moveX = (toX - this._x) / coeff;
+                let moveY = (toY - this._y) / coeff;
+                //console.log(`Из ${this._x}:${this._y} в ${toX}:${toY} расстояние ${distance}, 20 -> ${coeff}. ${this._x}+${moveX}, ${this._y}+${moveY}`);
+                //throw '';
+                this._x += moveX;
+                this._y += moveY;
+            }
+            else {
+                this._x = toX;
+                this._y = toY;
                 this.spaceObject = this.toObject;
                 this._state = State.Std;
+                //console.log('stop moving');
                 //console.log(this.spaceObject);
             }
         }
@@ -161,7 +169,7 @@
                 //console.log(`start drag from ${this._dragStartX}:${this._dragStartY}`);
             }
             this._x = this._dragStartX - offset.x / this.zoom;
-            this._y = this._dragStartY - offset.y / this.zoom;
+            this._y = this._dragStartY + offset.y / this.zoom;
             //console.log(`${this._dragStartX} - ${offset.x} = ${this._x}`);
         }
         stopDragging() {
@@ -169,6 +177,14 @@
             this._state = State.Free;
         }
     }();
+
+    class MouseInput {
+        constructor(e) {
+            this.x = e.clientX;
+            this.y = e.clientY;
+            this.time = Date.now();
+        }
+    }
 
     let objectsTree = new class {
         constructor() {
@@ -190,13 +206,265 @@
         }
     }();
 
-    class MouseInput {
-        constructor(e) {
-            this.x = e.clientX;
-            this.y = e.clientY;
-            this.time = Date.now();
+    class System {
+        constructor() { }
+        getComponent(data) { }
+        init() { }
+    }
+
+    class DrawSystemBase extends System {
+        constructor() {
+            super(...arguments);
+            this.centerX = 0;
+            this.centerY = 0;
+            this.vertical = 0;
+        }
+        draw() {
+            objectsTree.process(false, so => this.updateCoords(so));
+            this.clear();
+            objectsTree.process('sphere', so => this.drawSphere(so));
+            objectsTree.process('disc', so => this.drawDisc(so));
+        }
+        updateCoords(so) {
+            let v = this.vertical;
+            let pos = so.position;
+            let draw = this.getSpaceObjectDrawComponent(so);
+            draw.x = this.centerX - (view.x * view.zoom) + (pos.x * view.zoom);
+            draw.y = this.centerY - (view.y * view.zoom * v) + (pos.y * view.zoom * v);
+            so.draw.x = draw.x;
+            so.draw.y = draw.y;
+            //console.log(`${this.centerY} + (${view.y} * ${view.zoom}) + (${pos.y} * ${view.zoom} * ${v}) = ${draw.y}`);
+            //console.log(`${draw.x}:${draw.y}`);
         }
     }
+
+    let draw2DSystem = new class extends DrawSystemBase {
+        constructor() {
+            super();
+            this.vertical = -1;
+            this._ctx = canvas2d.getContext('2d');
+        }
+        getComponent({ spaceObject }) {
+            return { spaceObject, x: 0, y: 0 };
+        }
+        onViewResize(width, height) {
+            canvas2d.width = width;
+            canvas2d.height = height;
+            this.centerX = Math.round(width / 2);
+            this.centerY = Math.round(height / 2);
+        }
+        clear() {
+            this._ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
+        }
+        drawSphere(so) {
+            let ctx = this._ctx;
+            ctx.beginPath();
+            ctx.fillStyle = so.sphere.color;
+            ctx.arc(so.draw.x, so.draw.y, so.sphere.radius * view.zoom, 0, pi2);
+            ctx.fill();
+            //console.log(`${so.draw.x}:${so.draw.y}`);
+        }
+        drawDisc(so) {
+            let ctx = this._ctx;
+            let disc = so.disc;
+            ctx.beginPath();
+            ctx.strokeStyle = disc.color;
+            ctx.lineWidth = disc.size * view.zoom;
+            let diameter = (so.parent.sphere.radius + disc.distance) * view.zoom +
+                disc.size * view.zoom / 2;
+            ctx.arc(so.draw.x, so.draw.y, diameter, 0, pi2);
+            //console.log(`(${this.parent.radius} + ${this.distance}) * ${view.zoom} + ${this.size} * view.zoom / 2 = ${diameter}`);
+            ctx.stroke();
+        }
+        getSpaceObjectDrawComponent(so) {
+            return so.draw2d;
+        }
+        updateFocusCoords() {
+            objectsTree.process('focus', so => {
+                so.focus.x = so.draw2d.x;
+                so.focus.y = so.draw2d.y;
+            });
+        }
+    };
+
+    let draw3DSystem = new class extends DrawSystemBase {
+        constructor() {
+            super();
+            this.vertical = 1;
+            this._scene = new THREE.Scene();
+            this._camera = new THREE.OrthographicCamera(-200, 200, 100, -100, 1, 2000);
+            this._camera.position.z = 200;
+            this._scene.add(this._camera);
+            this._renderer = new THREE.WebGLRenderer({
+                canvas: canvas3d,
+                antialias: true,
+            });
+            let light = new THREE.PointLight(0xffffff, 1, 0, 0);
+            light.castShadow = true;
+            //light.position.set(100, 100, 100);
+            this._scene.add(light);
+        }
+        getComponent({ spaceObject }) {
+            let geometry;
+            let color;
+            let opacity;
+            let form = spaceObject.sphere ? spaceObject.sphere : spaceObject.disc;
+            let soColor = form.color;
+            //console.log(soColor);
+            if (soColor.startsWith('#')) {
+                if (soColor.length == 7) {
+                    color = soColor;
+                    opacity = 1;
+                }
+                else {
+                    color = soColor.substr(0, 7);
+                    opacity = 1 / 256 * parseInt(soColor.substr(7), 16);
+                    //console.log(color, opacity);
+                }
+            }
+            else {
+                color = soColor;
+            }
+            if (spaceObject.sphere) {
+                geometry = new THREE.SphereGeometry(spaceObject.sphere.radius, 16, 16);
+            }
+            else {
+                let innerRadius = spaceObject.parent.sphere.radius + spaceObject.disc.distance;
+                let outerRadius = innerRadius + spaceObject.disc.size;
+                geometry = new THREE.RingGeometry(innerRadius, outerRadius, 16);
+            }
+            let material = new THREE.MeshPhysicalMaterial({
+                color,
+                opacity,
+                emissive: (spaceObject.sphere?.emissive ?? color),
+                emissiveIntensity: (spaceObject.sphere?.emissive ? 1 : 0.2),
+                metalness: 0.3,
+                roughness: 0.65,
+            });
+            //console.log((spaceObject.sphere));
+            /*let material = new THREE.MeshBasicMaterial({
+                color,
+                opacity,
+            });*/
+            //console.log(geometry, material);
+            let mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            this._scene.add(mesh);
+            return { spaceObject, mesh, x: 0, y: 0 };
+        }
+        onViewResize(width, height) {
+            canvas3d.width = width;
+            canvas3d.height = height;
+            this._camera.left = -canvas3d.width / 2;
+            this._camera.right = canvas3d.width / 2;
+            this._camera.top = canvas3d.height / 2;
+            this._camera.bottom = -canvas3d.height / 2;
+            this._camera.updateProjectionMatrix();
+            this._renderer.setSize(width, height);
+        }
+        draw() {
+            super.draw();
+            if (this._camera.zoom != view.zoom) {
+                this._camera.zoom = view.zoom;
+                this._camera.updateProjectionMatrix();
+            }
+            this._camera.position.x = view.x;
+            this._camera.position.y = view.y;
+            this._renderer.render(this._scene, this._camera);
+        }
+        updateCoords(so) {
+            let pos = so.position;
+            so.draw3d.x = pos.x;
+            so.draw3d.y = pos.y;
+            so.draw.x = pos.x;
+            so.draw.y = pos.y;
+            //console.log(`(${view.y} * ${v}) + (${pos.y} * ${v}) = ${draw.y}`);
+            //console.log(`${draw.x}:${draw.y}`);
+        }
+        clear() { }
+        drawSphere(so) {
+            let mesh = so.draw3d.mesh;
+            mesh.position.x = so.draw.x;
+            mesh.position.y = so.draw.y;
+            //console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
+        }
+        drawDisc(so) {
+            let mesh = so.draw3d.mesh;
+            mesh.position.x = so.draw.x;
+            mesh.position.y = so.draw.y;
+            //console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
+        }
+        getSpaceObjectDrawComponent(so) {
+            return so.draw3d;
+        }
+        updateFocusCoords() {
+            objectsTree.process('focus', so => {
+                so.focus.x = (canvas3d.width / 2) - (view.x * view.zoom) + (so.position.x * view.zoom);
+                so.focus.y = (canvas3d.height / 2) + (view.y * view.zoom) - (so.position.y * view.zoom);
+            });
+        }
+    };
+
+    let drawSystem = new class extends System {
+        constructor() {
+            super();
+            this._engines = {};
+            this._engines.draw2DSystem = draw2DSystem;
+            this._engines.draw3DSystem = draw3DSystem;
+            this._activeEngine = this._engines.draw2DSystem;
+        }
+        getComponent({ spaceObject }) {
+            return { spaceObject, x: 0, y: 0 };
+        }
+        set2D() {
+            canvas2d.style.display = 'block';
+            canvas3d.style.display = 'none';
+            this._activeEngine = this._engines.draw2DSystem;
+        }
+        set3D() {
+            canvas2d.style.display = 'none';
+            canvas3d.style.display = 'block';
+            this._activeEngine = this._engines.draw3DSystem;
+        }
+        get vertical() { return this._activeEngine.vertical; }
+        onViewResize(width, height) {
+            this._activeEngine.onViewResize(width, height);
+        }
+        draw() {
+            this._activeEngine.draw();
+        }
+        updateFocusCoords() {
+            this._activeEngine.updateFocusCoords();
+        }
+    }();
+
+    let focusSystem = new class extends System {
+        getComponent({ spaceObject }) {
+            return { spaceObject, x: 0, y: 0 };
+        }
+        getNearestSpaceObject(x, y) {
+            let rect = canvasesBlock.getBoundingClientRect();
+            let distance = 1000000;
+            let clickedObject = null;
+            this._updateCoords();
+            objectsTree.process('focus', so => {
+                let clickedX = x - rect.left;
+                let clickedY = y - rect.top;
+                let d = getDistance(clickedX, clickedY, so.focus.x, so.focus.y);
+                //console.log(`${clickedX}:${clickedY} <> ${so.sphere.color} ${so.focus.x}:${so.focus.y} = ${d}`);
+                if (d < distance) {
+                    distance = d;
+                    clickedObject = so;
+                }
+            });
+            //console.log(clickedObject);
+            return clickedObject;
+        }
+        _updateCoords() {
+            drawSystem.updateFocusCoords();
+        }
+    };
 
     var State$1;
     (function (State) {
@@ -229,9 +497,6 @@
          * - std
          * - mousedown
          * -
-         *
-         * @param {String} m
-         * @param {Object} data
          */
         notify(m, data) {
             let state = this.state;
@@ -246,7 +511,7 @@
                 if (state == State$1.Mousedown) {
                     this.move = new MouseInput(e);
                     if (this._isMovedForDrag(this.move)) {
-                        canvas.style.cursor = 'grab';
+                        canvasesBlock.style.cursor = 'grab';
                         this.state = State$1.Drag;
                         this._drag();
                     }
@@ -258,7 +523,7 @@
             }
             else if (m == 'mouseup') {
                 this.up = new MouseInput(e);
-                canvas.style.cursor = null;
+                canvasesBlock.style.cursor = null;
                 if (state == State$1.Mousedown || state == State$1.Drag) {
                     if (state == State$1.Drag) {
                         this.state = State$1.Std;
@@ -272,7 +537,7 @@
             }
             else if (m == 'mouseleave') {
                 this.up = new MouseInput(e);
-                canvas.style.cursor = null;
+                canvasesBlock.style.cursor = null;
                 if (state == State$1.Mousedown || state == State$1.Drag) {
                     if (state == State$1.Drag) {
                         this.state = State$1.Std;
@@ -299,20 +564,7 @@
             return (distance > 3);
         }
         _click() {
-            let rect = canvas.getBoundingClientRect();
-            let distance = 1000000;
-            let clickedObject = null;
-            objectsTree.process(false, so => {
-                let clickedX = this.down.x - rect.left;
-                let clickedY = this.down.y - rect.top;
-                let d = getDistance(clickedX, clickedY, so.position.drawX, so.position.drawY);
-                //console.log(`${clickedX}:${clickedY} <> ${so.color} ${so.position.drawX}:${so.position.drawY}`);
-                if (d < distance) {
-                    distance = d;
-                    clickedObject = so;
-                }
-            });
-            //console.log(clickedObject);
+            let clickedObject = focusSystem.getNearestSpaceObject(this.down.x, this.down.y);
             view.startMoving(clickedObject);
         }
         _drag() {
@@ -324,6 +576,7 @@
         }
     }();
 
+    //import IFocus          from 'system/ifocus';
     class SpaceObject {
         constructor() {
             this.parent = null;
@@ -335,15 +588,9 @@
         }
     }
 
-    class System {
-        constructor() { }
-        getComponent(data) { }
-        init() { }
-    }
-
     let positionSystem = new class extends System {
         getComponent({ spaceObject }) {
-            return { spaceObject, x: 0, y: 0, drawX: 0, drawY: 0 };
+            return { spaceObject, x: 0, y: 0 };
         }
     };
 
@@ -356,10 +603,10 @@
         }
         _setCoords(so) {
             let pos = so.position;
-            let [parentX, parentY] = so.parent ? [so.parent.position.drawX, so.parent.position.drawY] : [0, 0];
-            pos.drawX = view.drawX + parentX + pos.x * view.zoom;
-            pos.drawY = view.drawY + parentY + pos.y * view.zoom;
-            //console.log(`${pos.drawX}:${pos.drawY}`);
+            let [parentX, parentY] = so.parent ? [so.parent.position.x, so.parent.position.y] : [0, 0];
+            pos.x = parentX;
+            pos.y = parentY;
+            //console.log(`${pos.x}:${pos.y}`);
         }
     }();
 
@@ -399,33 +646,23 @@
         _setCoords(so) {
             let pos = so.position;
             let orbit = so.orbit;
-            let lx = Math.cos(orbit.angle) * orbit.centerDistance;
-            let ly = Math.sin(orbit.angle) * orbit.centerDistance;
+            let angle = angle270 - orbit.angle;
+            let lx = Math.cos(angle) * orbit.centerDistance;
+            let ly = Math.sin(angle) * orbit.centerDistance;
             pos.x = so.parent.position.x + lx;
             pos.y = so.parent.position.y + ly;
-            pos.drawX = view.drawX + pos.x * view.zoom;
-            pos.drawY = view.drawY + pos.y * view.zoom;
         }
     }();
 
     let sphereSystem = new class extends System {
-        getComponent({ spaceObject, size, color }) {
+        getComponent({ spaceObject, size, color, emissive }) {
             return {
                 spaceObject,
                 size,
                 color,
+                emissive,
                 ...{ radius: size / 2 }
             };
-        }
-        draw() {
-            objectsTree.process('sphere', so => this._draw(so));
-        }
-        _draw(so) {
-            ctx.beginPath();
-            ctx.fillStyle = so.sphere.color;
-            ctx.arc(so.position.drawX, so.position.drawY, so.sphere.radius * view.zoom, 0, pi2);
-            //console.log(`${so.position.x} -> ${drawX}, ${so.position.y} -> ${drawY}`);
-            ctx.fill();
         }
     };
 
@@ -438,21 +675,6 @@
                 color,
             };
         }
-        draw() {
-            objectsTree.process('disc', so => this._draw(so));
-        }
-        _draw(so) {
-            let disc = so.disc;
-            so.position = { ...so.parent.position };
-            ctx.beginPath();
-            ctx.strokeStyle = disc.color;
-            ctx.lineWidth = disc.size * view.zoom;
-            let diameter = (so.parent.sphere.radius + disc.distance) * view.zoom +
-                disc.size * view.zoom / 2;
-            ctx.arc(so.position.drawX, so.position.drawY, diameter, 0, pi2);
-            //console.log(`(${this.parent.radius} + ${this.distance}) * ${view.zoom} + ${this.size} * view.zoom / 2 = ${diameter}`);
-            ctx.stroke();
-        }
     };
 
     let componentsFactory = new class {
@@ -462,6 +684,10 @@
             this.orbit = orbitSystem;
             this.sphere = sphereSystem;
             this.disc = discSystem;
+            this.draw2d = draw2DSystem;
+            this.draw3d = draw3DSystem;
+            this.draw = drawSystem;
+            this.focus = focusSystem;
         }
         get(name, data) {
             return this[name].getComponent(data);
@@ -478,80 +704,92 @@
             for (let [name, data] of Object.entries(components)) {
                 let c = componentsFactory.get(name, { ...data, spaceObject });
                 spaceObject.setComponent(name, c);
-                //componentsFactory.init(spaceObject, name);
             }
             return spaceObject;
         }
     }();
 
+    let commonComponentParams = {
+        position: {},
+        draw2d: {},
+        draw3d: {},
+        draw: {},
+    };
     let sun = spaceObjectsManager.create({
         components: {
-            position: {},
             still: {},
-            sphere: { size: 100, color: 'yellow' },
+            sphere: { size: 100, color: 'yellow', emissive: 'yellow' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 30, speed: 2 },
             sphere: { size: 8, color: 'white' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 70, speed: 1.5 },
             sphere: { size: 20, color: 'orange' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     let earth = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 140, speed: 1.2 },
             sphere: { size: 25, color: 'green' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: earth,
         components: {
-            position: {},
             orbit: { distance: 12, speed: 1 },
             sphere: { size: 5, color: 'white' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     let mars = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
-            orbit: { distance: 190, speed: 1 },
+            orbit: { distance: 220, speed: 1 },
             sphere: { size: 17, color: 'red' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: mars,
         components: {
-            position: {},
             orbit: { distance: 9, speed: 0.8 },
             sphere: { size: 5, color: 'white' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: mars,
         components: {
-            position: {},
             orbit: { distance: 18, speed: 0.6 },
             sphere: { size: 5, color: 'white' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     for (let a = 0; a < 300; a++) {
         spaceObjectsManager.create({
             parent: sun,
             components: {
-                position: {},
                 orbit: {
                     distance: 280 + Math.floor(Math.random() * 151),
                     speed: 0.3,
@@ -560,132 +798,130 @@
                     size: 2 + Math.floor(Math.random() * 3),
                     color: 'gray',
                 },
+                focus: {},
+                ...commonComponentParams
             },
         });
     }
     let jupiter = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 550, speed: 1 },
             sphere: { size: 50, color: 'khaki' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     for (let a = 0; a < 4; a++) {
         spaceObjectsManager.create({
             parent: jupiter,
             components: {
-                position: {},
                 orbit: { distance: 20 + a * 10, speed: 1 - a / 10 },
                 sphere: { size: 5, color: 'white' },
+                focus: {},
+                ...commonComponentParams
             },
         });
     }
     let saturn = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 700, speed: 0.9 },
             sphere: { size: 30, color: 'khaki' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: saturn,
         components: {
-            position: {},
             still: {},
             disc: { distance: 5, size: 6, color: '#f0e68c88' },
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: saturn,
         components: {
-            position: {},
             still: {},
             disc: { distance: 12, size: 4, color: '#f0e68c88' },
+            ...commonComponentParams
         },
     });
     let uranus = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 850, speed: 0.8 },
             sphere: { size: 28, color: 'lightblue' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: uranus,
         components: {
-            position: {},
             still: {},
             disc: { distance: 7, size: 5, color: '#add8e688' },
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 950, speed: 0.7 },
             sphere: { size: 26, color: 'lightblue' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     let pluto = spaceObjectsManager.create({
         parent: sun,
         components: {
-            position: {},
             orbit: { distance: 1000, speed: 0.5 },
             sphere: { size: 5, color: 'gray' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     spaceObjectsManager.create({
         parent: pluto,
         components: {
-            position: {},
             orbit: { distance: 5, speed: 0.2 },
             sphere: { size: 3, color: 'gray' },
+            focus: {},
+            ...commonComponentParams
         },
     });
     objectsTree.root = sun;
     view.spaceObject = sun;
-    /*view.zoomIn();
-    view.zoomIn();
-    view.zoomIn();
-    view.zoomIn();
-    view.zoomIn();*/
+    if (window.location.search.match('d=3')) {
+        drawSystem.set3D();
+    }
+    else {
+        drawSystem.set2D();
+    }
     function resizeView() {
         //console.log(`${window.innerWidth}x${window.innerHeight} vs ${html.clientWidth}x${html.clientHeight}`);
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - 5;
-        view.centerX = Math.round(canvas.width / 2);
-        view.centerY = Math.round(canvas.height / 2);
+        //canvases.style.height = `${window.innerHeight - 5}px`;
+        let viewWidth = window.innerWidth;
+        let viewHeight = window.innerHeight - 5;
+        drawSystem.onViewResize(viewWidth, viewHeight);
     }
     resizeView();
     function animationFrame() {
-        stillSystem.move();
         orbitSystem.move();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        sphereSystem.draw();
-        discSystem.draw();
+        stillSystem.move();
         view.continueMoving();
+        drawSystem.draw();
         window.requestAnimationFrame(animationFrame);
     }
-    animationFrame();
-    /*sphereSystem.draw();
-    setInterval(function () {
-        orbitSystem.move();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        sphereSystem.draw();
-        let text = '';
-        objectsTree.process('orbit', so => text += `${rtd(so.orbit.angle)}, `);
-        console.log(text);
-        //objectsTree.process('orbit', so => console.log(rtd(so.orbit.angle)));
-    }, 1000);*/
     window.onresize = resizeView;
-    canvas.onmousedown = e => input.notify('mousedown', { e });
-    canvas.onmouseup = e => input.notify('mouseup', { e });
-    canvas.onmousemove = e => input.notify('mousemove', { e });
-    canvas.onmouseleave = e => input.notify('mouseleave', { e });
-    canvas.onmouseenter = e => input.notify('mouseenter', { e });
+    animationFrame();
+    canvasesBlock.onmousedown = e => input.notify('mousedown', { e });
+    canvasesBlock.onmouseup = e => input.notify('mouseup', { e });
+    canvasesBlock.onmousemove = e => input.notify('mousemove', { e });
+    canvasesBlock.onmouseleave = e => input.notify('mouseleave', { e });
+    canvasesBlock.onmouseenter = e => input.notify('mouseenter', { e });
     window.onwheel = e => input.notify('wheel', { e });
 
-}());
+}(THREE));

@@ -19,7 +19,6 @@ let spaceObjectsManager = new class {
 		for (let [name, data] of Object.entries(components)) {
 			let c = componentsFactory.get(name, {...data, spaceObject});
 			spaceObject.setComponent(name, c);
-			//componentsFactory.init(spaceObject, name);
 		}
 
 		return spaceObject;

@@ -1,4 +1,5 @@
-https://ser5.github.io/planets/
+* **2D**: https://ser5.github.io/planets/
+* **3D**: https://ser5.github.io/planets/?d=3
 
 <table>
 	<tr><td>Клик</td><td>фокус точки обзора на планете</td></tr>

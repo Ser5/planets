@@ -1,4 +1,4 @@
-import {ctx, pi2, rtd}  from 'init';
+import {ctx, pi2, angle270, rtd}  from 'init';
 import objectsTree from 'objects-tree';
 import view        from 'view';
 import System      from 'system';
@@ -58,14 +58,12 @@ let orbitSystem = new class extends System implements IMovable {
 	_setCoords (so: SpaceObject) {
 		let pos   = so.position;
 		let orbit = so.orbit;
-		let lx    = Math.cos(orbit.angle) * orbit.centerDistance;
-		let ly    = Math.sin(orbit.angle) * orbit.centerDistance;
+		let angle = angle270 - orbit.angle;
+		let lx    = Math.cos(angle) * orbit.centerDistance;
+		let ly    = Math.sin(angle) * orbit.centerDistance;
 
 		pos.x = so.parent.position.x + lx;
 		pos.y = so.parent.position.y + ly;
-
-		pos.drawX = view.drawX + pos.x * view.zoom;
-		pos.drawY = view.drawY + pos.y * view.zoom;
 	}
 }();
 

@@ -23,11 +23,11 @@ let stillSystem = new class extends System implements IMovable {
 	_setCoords (so: SpaceObject) {
 		let pos = so.position;
 
-		let [parentX, parentY] = so.parent ? [so.parent.position.drawX, so.parent.position.drawY] : [0, 0];
+		let [parentX, parentY] = so.parent ? [so.parent.position.x, so.parent.position.y] : [0, 0];
 
-		pos.drawX = view.drawX + parentX + pos.x * view.zoom;
-		pos.drawY = view.drawY + parentY + pos.y * view.zoom;
-		//console.log(`${pos.drawX}:${pos.drawY}`);
+		pos.x = parentX;
+		pos.y = parentY;
+		//console.log(`${pos.x}:${pos.y}`);
 	}
 }();
 

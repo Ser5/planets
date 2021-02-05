@@ -3,9 +3,15 @@ import typescript    from '@rollup/plugin-typescript';
 
 export default {
 	input: 'src/js/main.ts',
+	external: [
+		'three',
+	],
 	output: {
 		file:   'dist/bundle.js',
-		format: 'iife'
+		format: 'iife',
+		globals: {
+			three: 'THREE',
+		},
 	},
 	watch: {},
 	plugins: [
@@ -17,7 +23,10 @@ export default {
 			include: [
 				//'.js',       '.ts',
 				'./**/*.js', './**/*.ts',
-			]
+			],
+			exclude: [
+				'./dist/**/*',
+			],
 		}),
 	]
 };
