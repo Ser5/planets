@@ -1,136 +1,129 @@
-import {canvasesBlock, getDistance} from 'init';
-import objectsTree           from 'objects-tree';
-import view                  from 'view';
-import MouseInput            from 'mouse-input';
-import focusSystem           from 'system/focus-system';
+import {getDistance}   from 'utils';
+import {MouseInput}    from 'mouse-input';
+import {InputMessages} from 'input-messages';
+import {View}          from 'view';
+import {Focus}         from 'focus';
 
-enum State {Std, Mousedown, Drag};
+let im = InputMessages;
 
 
 
-let input = new class {
-	private state: State;
-	private down:  MouseInput;
-	private up:    MouseInput;
-	private move:  MouseInput;
+enum State {Focused, MouseDown, Dragging};
 
-	constructor () {
-		this.state = State.Std;
-		this.down  = null;
-		this.up    = null;
-		this.move  = null;
+
+
+export class Input {
+	private _state: State = State.Focused;
+	private _down:  MouseInput = null;
+	private _up:    MouseInput = null;
+	private _move:  MouseInput = null;
+
+	private _canvasesBlock: HTMLElement;
+	private _view:          View;
+	private _focus:         Focus;
+
+	constructor (
+		{canvasesBlock,              view,       focus}:
+		{canvasesBlock: HTMLElement, view: View, focus: Focus}
+	) {
+		canvasesBlock.onmousedown  = e=>this.notify(im.MouseDown,  e);
+		canvasesBlock.onmouseup    = e=>this.notify(im.MouseUp,    e);
+		canvasesBlock.onmousemove  = e=>this.notify(im.MouseMove,  e);
+		canvasesBlock.onmouseleave = e=>this.notify(im.MouseLeave, e);
+		canvasesBlock.onmouseenter = e=>this.notify(im.MouseEnter, e);
+		window.onwheel             = e=>this.notify(im.Wheel,      e);
+
+		this._canvasesBlock = canvasesBlock;
+		this._view          = view;
+		this._focus         = focus;
 	}
 
 
 
-	/**
-	 * Уведомление о вводе.
-	 *
-	 * m:
-	 * - mousedown
-	 * - mouseup
-	 * - mousemove
-	 * - mouseleave
-	 * - mouseenter
-	 * - wheel
-	 *
-	 * data:
-	 * - e
-	 *
-	 * state:
-	 * - std
-	 * - mousedown
-	 * -
-	 */
-	notify (m: string, data: any) {
-		let state = this.state;
-		let e     = data.e;
-		if (m == 'mousedown') {
-			this.down = new MouseInput(e);
-			if (state == State.Std) {
-				this.state = State.Mousedown;
+	notify (m: InputMessages, e: MouseEvent|WheelEvent) {
+		let state = this._state;
+		if (m == im.MouseDown) {
+			this._down = new MouseInput(e);
+			if (state == State.Focused) {
+				this._state = State.MouseDown;
 			}
 		}
-		else if (m == 'mousemove') {
-			if (state == State.Mousedown) {
-				this.move = new MouseInput(e);
-				if (this._isMovedForDrag(this.move)) {
-					canvasesBlock.style.cursor = 'grab';
-					this.state          = State.Drag;
+		else if (m == im.MouseMove) {
+			if (state == State.MouseDown) {
+				this._move = new MouseInput(e);
+				if (this._isMovedForDrag(this._move)) {
+					this._canvasesBlock.style.cursor = 'grab';
+					this._state                      = State.Dragging;
 					this._drag();
 				}
 			}
-			if (state == State.Drag) {
-				this.move = new MouseInput(e);
+			if (state == State.Dragging) {
+				this._move = new MouseInput(e);
 				this._drag();
 			}
 		}
-		else if (m == 'mouseup') {
-			this.up = new MouseInput(e);
-			canvasesBlock.style.cursor = null;
-			if (state == State.Mousedown || state == State.Drag) {
-				if (state == State.Drag) {
-					this.state = State.Std;
-					view.stopDragging();
+		else if (m == im.MouseUp) {
+			this._up = new MouseInput(e);
+			this._canvasesBlock.style.cursor = null;
+			if (state == State.MouseDown || state == State.Dragging) {
+				if (state == State.Dragging) {
+					this._state = State.Focused;
+					this._view.stopDragging();
 				}
-				if (this._isTimedForFocus() && !this._isMovedForDrag(this.up)) {
-					this.state = State.Std;
+				if (this._isTimedForFocus() && !this._isMovedForDrag(this._up)) {
+					this._state = State.Focused;
 					this._click();
 				}
 			}
 		}
-		else if (m == 'mouseleave') {
-			this.up = new MouseInput(e);
-			canvasesBlock.style.cursor = null;
-			if (state == State.Mousedown || state == State.Drag) {
-				if (state == State.Drag) {
-					this.state = State.Std;
-					view.stopDragging();
+		else if (m == im.MouseLeave) {
+			this._up = new MouseInput(e);
+			this._canvasesBlock.style.cursor = null;
+			if (state == State.MouseDown || state == State.Dragging) {
+				if (state == State.Dragging) {
+					this._state = State.Focused;
+					this._view.stopDragging();
 				}
 			}
 		}
-		else if (m == 'mouseenter') {
+		else if (m == im.MouseEnter) {
 			if (e.buttons & 1) {
-				this.down = new MouseInput(e);
-				this.state = State.Mousedown;
+				this._down = new MouseInput(e);
+				this._state = State.MouseDown;
 			}
 		}
 
-		if (m == 'wheel') {
-			(e.deltaY < 0) ? view.zoomIn() : view.zoomOut();
+		if (m == im.Wheel) {
+			((e as WheelEvent).deltaY < 0) ? this._view.zoomIn() : this._view.zoomOut();
 		}
 	}
 
 
 
 	_isTimedForFocus () {
-		let timeDiff = this.up.time - this.down.time;
+		let timeDiff = this._up.time - this._down.time;
 		return (timeDiff <= 500);
 	}
 
 	_isMovedForDrag (mouseInput) {
-		let distance = getDistance(this.down.x, this.down.y, mouseInput.x, mouseInput.y);
+		let distance = getDistance(this._down.x, this._down.y, mouseInput.x, mouseInput.y);
 		return (distance > 3);
 	}
 
 
 
 	_click () {
-		let clickedObject = focusSystem.getNearestSpaceObject(this.down.x, this.down.y);
-		view.startMoving(clickedObject);
+		let clickedObject = this._focus.getNearestSpaceObject(this._down.x, this._down.y);
+		this._view.startMoving(clickedObject);
 	}
 
 
 
 	_drag () {
-		//console.log(`${this.move.x} - ${this.down.x}`);
-		view.drag({
-			x: this.move.x - this.down.x,
-			y: this.move.y - this.down.y
+		//console.log(`${this._move.x} - ${this._down.x}`);
+		this._view.drag({
+			x: this._move.x - this._down.x,
+			y: this._move.y - this._down.y
 		});
 	}
-}();
-
-
-
-export default input;
+}

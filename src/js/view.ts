@@ -1,8 +1,10 @@
-import {getDistance} from 'init';
-import SpaceObject   from 'space-object';
-import drawSystem    from 'system/draw/draw-system';
+import {getDistance}        from 'utils';
+import {Entity}             from 'ecs/import';
+import {IPositionComponent} from 'component/import';
 
-enum State {Std, Moving, Dragging, Free};
+
+
+enum State {Focused, Moving, Dragging, Free};
 
 
 
@@ -78,62 +80,81 @@ enum State {Std, Moving, Dragging, Free};
  * абсолютная точка отсчёта внутри абсолютной точки отображения - левого
  * верхнего угла канваса.
  */
-let view = new class {
+export class View {
 	private _zoomLevelsList: number[] = [
 		0.3, 0.4, 0.5, 0.6, 0.8,
 		1,
 		1.5, 2, 3, 4, 5,
 	];
-	private _state:       State       = State.Std;
-	private _spaceObject: SpaceObject = null;
-	public  centerX:      number      = 0;
-	public  centerY:      number      = 0;
-	private _dragStartX:  number      = 0;
-	private _dragStartY:  number      = 0;
-	private _x:           number      = 0;
-	private _y:           number      = 0;
-	private _zoomLevel:   number      = 5;
-	private _zoom:        number      = null;
-	public  toObject:     SpaceObject = null;
+	private _state:       State  = State.Focused;
+	private _spaceObject: Entity = null;
+	private _dragStartX:  number = 0;
+	private _dragStartY:  number = 0;
+	private _x:           number = 0;
+	private _y:           number = 0;
+	private _zoomLevel:   number = 5;
+	private _zoom:        number = null;
+	private _toObject:    Entity = null;
 
 	constructor () {
 		this._setZoom();
 	}
 
-	get spaceObject ()   { return this._spaceObject; }
-	set spaceObject (so: SpaceObject) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
 
-	get x () { return this._state == State.Std ? this._spaceObject.position.x : this._x; }
-	get y () { return this._state == State.Std ? this._spaceObject.position.y : this._y; }
+
+	get spaceObject () {
+		return this._spaceObject;
+	}
+
+	set spaceObject (so: Entity) {
+		this._spaceObject = so;
+		let pos = so.c('position') as IPositionComponent;
+		this._x = pos.x;
+		this._y = pos.y;
+	}
+
+
+
+	get x () { return this._state == State.Focused ? (this._spaceObject.c('position') as IPositionComponent).x : this._x; }
+	get y () { return this._state == State.Focused ? (this._spaceObject.c('position') as IPositionComponent).y : this._y; }
+
+
 
 	get zoom ()  { return this._zoom; }
 
 	zoomIn  () { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
 	zoomOut () { this._zoomLevel = Math.max(this._zoomLevel - 1, 0);                               this._setZoom(); }
 
-	_setZoom() { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
+	_setZoom () { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
 
-	startMoving (so: SpaceObject) {
-		if (so == this.spaceObject) {
+
+
+	startMoving (so: Entity) {
+		if (so == this._spaceObject) {
 			return;
 		}
-		if (this._state == State.Std) {
-			this._x = this._spaceObject.position.x;
-			this._y = this._spaceObject.position.y;
+		if (this._state == State.Focused) {
+			let pos = this._spaceObject.c('position') as IPositionComponent;
+			this._x = pos.x;
+			this._y = pos.y;
 		}
 		//console.log(`startMoving ${this._x}:${this._y}`);
-		this._state   = State.Moving;
-		this.toObject = so;
+		this._state    = State.Moving;
+		this._toObject = so;
 		this.continueMoving();
 	}
+
+
 
 	continueMoving () {
 		if (this._state != State.Moving) {
 			return;
 		}
-		let {x:toX, y:toY} = this.toObject.position;
-		//console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${this.toObject.draw.x}:${this.toObject.draw.y}.`);
+		let {x:toX, y:toY} = (this._toObject.c('position') as IPositionComponent);
+		//let draw = this._toObject.c('draw') as IPositionComponent;
+		//console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${draw.x}:${draw.y}.`);
 		let distance = getDistance(this._x, this._y, toX, toY);
+		//console.log(`Из ${this._x}:${this._y} в ${toX}:${toY} расстояние ${distance}`);
 		if (distance >= 20) {
 			let coeff = distance / 20;
 			let moveX = (toX - this._x) / coeff;
@@ -145,12 +166,14 @@ let view = new class {
 		} else {
 			this._x          = toX;
 			this._y          = toY;
-			this.spaceObject = this.toObject;
-			this._state      = State.Std;
+			this.spaceObject = this._toObject;
+			this._state      = State.Focused;
 			//console.log('stop moving');
 			//console.log(this.spaceObject);
 		}
 	}
+
+
 
 	drag (offset: {x:number, y:number}) {
 		if (this._state != State.Dragging) {
@@ -165,12 +188,10 @@ let view = new class {
 		//console.log(`${this._dragStartX} - ${offset.x} = ${this._x}`);
 	}
 
+
+
 	stopDragging () {
 		//console.log('stop drag');
 		this._state = State.Free;
 	}
-}();
-
-
-
-export default view;
+}

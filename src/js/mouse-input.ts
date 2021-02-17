@@ -1,4 +1,4 @@
-export default class MouseInput {
+export class MouseInput {
 	public x:    number;
 	public y:    number;
 	public time: number;

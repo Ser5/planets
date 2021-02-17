@@ -1,11 +1,285 @@
-(function (THREE) {
+(function () {
     'use strict';
 
-    let html = document.querySelector('html');
-    let canvasesBlock = document.querySelector('.canvases-block');
-    let canvas2d = document.querySelector('.canvas2d');
-    let canvas3d = document.querySelector('.canvas3d');
-    let ctx = canvas2d.getContext('2d');
+    class ComponentsManager {
+        constructor() {
+            this._creators = {};
+        }
+        register(name, creator) {
+            this._creators[name] = creator;
+        }
+        get(name, data) {
+            return this._creators[name](data);
+        }
+    }
+
+    class Entity {
+        constructor() {
+            this.parent = null;
+            this.children = [];
+            this._components = {};
+        }
+        addChild(child) {
+            this.children.push(child);
+        }
+        setComponent(name, component) { this._components[name] = component; }
+        c(name) {
+            return this._components[name] ?? null;
+        }
+    }
+
+    class EntitiesManager {
+        constructor({ componentsManager }) {
+            this._componentsManager = componentsManager;
+        }
+        create({ parent = null, components = {} }) {
+            let entity = new Entity();
+            if (parent) {
+                parent.addChild(entity);
+                entity.parent = parent;
+            }
+            for (let [name, data] of Object.entries(components)) {
+                let c = this._componentsManager.get(name, { ...data, entity });
+                entity.setComponent(name, c);
+            }
+            return entity;
+        }
+    }
+
+    class EntitiesTree {
+        constructor() {
+            this.root = null;
+        }
+        process(componentFilter, callback) {
+            //console.log(this.root);
+            this._process(this.root, componentFilter, callback);
+        }
+        _process(entity, componentFilter, callback) {
+            if (!componentFilter || this._isAnyComponentExists(entity, componentFilter)) {
+                callback(entity);
+            }
+            if (entity.children.length) {
+                for (let so of entity.children) {
+                    this._process(so, componentFilter, callback);
+                }
+            }
+        }
+        _isAnyComponentExists(entity, componentFilter) {
+            let r = false;
+            if (typeof componentFilter === 'string') {
+                r = (entity.c(componentFilter) !== null);
+            }
+            else {
+                for (let f of componentFilter) {
+                    if (entity.c(f) !== null) {
+                        r = true;
+                        break;
+                    }
+                }
+            }
+            return r;
+        }
+    }
+
+    class System {
+    }
+
+    let ecs = {};
+    ecs.componentsManager = new ComponentsManager();
+    ecs.entitiesManager = new EntitiesManager({ componentsManager: ecs.componentsManager });
+    ecs.entitiesTree = new EntitiesTree();
+
+    class SpaceObjectsInitializer {
+        constructor({ entitiesManager }) {
+            this._entitiesManager = entitiesManager;
+        }
+        init() {
+            let entitiesManager = this._entitiesManager;
+            let commonComponentParams = {
+                position: {},
+                draw: {},
+            };
+            let sun = entitiesManager.create({
+                components: {
+                    still: {},
+                    sphere: { size: 100, color: 'yellow', emissive: 'yellow' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 30, speed: 2 },
+                    sphere: { size: 8, color: 'white' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 70, speed: 1.5 },
+                    sphere: { size: 20, color: 'orange' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            let earth = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 140, speed: 1.2 },
+                    sphere: { size: 25, color: 'green' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: earth,
+                components: {
+                    orbit: { distance: 12, speed: 1 },
+                    sphere: { size: 5, color: 'white' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            let mars = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 220, speed: 1 },
+                    sphere: { size: 17, color: 'red' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: mars,
+                components: {
+                    orbit: { distance: 9, speed: 0.8 },
+                    sphere: { size: 5, color: 'white' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: mars,
+                components: {
+                    orbit: { distance: 18, speed: 0.6 },
+                    sphere: { size: 5, color: 'white' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            for (let a = 0; a < 300; a++) {
+                entitiesManager.create({
+                    parent: sun,
+                    components: {
+                        orbit: {
+                            distance: 280 + Math.floor(Math.random() * 151),
+                            speed: 0.3,
+                        },
+                        sphere: {
+                            size: 2 + Math.floor(Math.random() * 3),
+                            color: 'gray',
+                        },
+                        focus: {},
+                        ...commonComponentParams
+                    },
+                });
+            }
+            let jupiter = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 550, speed: 1 },
+                    sphere: { size: 50, color: 'khaki' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            for (let a = 0; a < 4; a++) {
+                entitiesManager.create({
+                    parent: jupiter,
+                    components: {
+                        orbit: { distance: 20 + a * 10, speed: 1 - a / 10 },
+                        sphere: { size: 5, color: 'white' },
+                        focus: {},
+                        ...commonComponentParams
+                    },
+                });
+            }
+            let saturn = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 700, speed: 0.9 },
+                    sphere: { size: 30, color: 'khaki' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: saturn,
+                components: {
+                    still: {},
+                    disc: { distance: 5, size: 6, color: '#f0e68c88' },
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: saturn,
+                components: {
+                    still: {},
+                    disc: { distance: 12, size: 4, color: '#f0e68c88' },
+                    ...commonComponentParams
+                },
+            });
+            let uranus = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 850, speed: 0.8 },
+                    sphere: { size: 28, color: 'lightblue' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: uranus,
+                components: {
+                    still: {},
+                    disc: { distance: 7, size: 5, color: '#add8e688' },
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 950, speed: 0.7 },
+                    sphere: { size: 26, color: 'lightblue' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            let pluto = entitiesManager.create({
+                parent: sun,
+                components: {
+                    orbit: { distance: 1000, speed: 0.5 },
+                    sphere: { size: 5, color: 'gray' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            entitiesManager.create({
+                parent: pluto,
+                components: {
+                    orbit: { distance: 5, speed: 0.2 },
+                    sphere: { size: 3, color: 'gray' },
+                    focus: {},
+                    ...commonComponentParams
+                },
+            });
+            return sun;
+        }
+    }
+
     let pi2 = Math.PI * 2;
     let angle270 = Math.PI * 1.5;
     function getDistance(x1, y1, x2, y2) {
@@ -15,9 +289,109 @@
         return d;
     }
 
+    class ComponentsRegistrator {
+        constructor({ componentsManager }) {
+            this._componentsManager = componentsManager;
+        }
+        register() {
+            let componentsManager = this._componentsManager;
+            componentsManager.register('position', function ({ entity, x = 0, y = 0 }) {
+                return { entity, x, y };
+            });
+            componentsManager.register('still', function ({ entity }) {
+                return { entity };
+            });
+            componentsManager.register('orbit', function ({ entity, distance = 0, speed = 0 }) {
+                let centerDistance = entity.parent.c('sphere').radius + distance;
+                let angle = Math.random() * pi2;
+                let orbitLength = centerDistance * pi2;
+                let orbitPartSize = speed / orbitLength;
+                let moveAngle = pi2 * orbitPartSize;
+                /*console.log(`Расстояние от центра: ${entity.parent.sphere.radius} + ${distance} = ${centerDistance}`);
+                console.log(`Начальный угол: ${angle}`);
+                console.log(`Длина орбиты: ${orbitLength}`);
+                console.log(`Какую часть орбиты объект проходит со скоростью ${speed}: ${orbitPartSize}`);
+                console.log(`Сколько радиан объект проходит со скоростью ${speed}: ${moveAngle}`);
+                console.log(`В градусах: ${360 * orbitPartSize}`);
+                console.log('----------------');*/
+                return {
+                    entity,
+                    distance,
+                    speed,
+                    ...{ centerDistance, angle, moveAngle }
+                };
+            });
+            componentsManager.register('sphere', function ({ entity, size, color, emissive }) {
+                return {
+                    entity,
+                    size,
+                    color,
+                    emissive,
+                    ...{ radius: size / 2 },
+                };
+            });
+            componentsManager.register('disc', function ({ entity, distance, size, color }) {
+                return {
+                    entity,
+                    distance,
+                    size,
+                    color,
+                };
+            });
+            componentsManager.register('draw', function ({ entity }) {
+                return {
+                    entity,
+                    x: 0,
+                    y: 0,
+                    mesh: null,
+                };
+            });
+            componentsManager.register('focus', function ({ entity }) {
+                return { entity, x: 0, y: 0 };
+            });
+        }
+    }
+
+    class Html {
+        constructor() {
+            this._html = document.querySelector('html');
+            this._canvasesBlock = document.querySelector('.canvases-block');
+            this._canvas2d = document.querySelector('.canvas2d');
+            this._canvas3d = document.querySelector('.canvas3d');
+            this._canvasesList = [this._canvas2d, this._canvas3d];
+            this._canvas2dContext = this._canvas2d.getContext('2d');
+        }
+        get html() { return this._html; }
+        get canvasesBlock() { return this._canvasesBlock; }
+        get canvas2d() { return this._canvas2d; }
+        get canvas3d() { return this._canvas3d; }
+        get canvasesList() { return this._canvasesList; }
+        get canvas2dContext() { return this._canvas2dContext; }
+        activateCanvas(canvas) {
+            for (let c of this._canvasesList) {
+                if (c == canvas) {
+                    c.style.display = 'block';
+                }
+                else {
+                    c.style.display = 'none';
+                }
+            }
+            return this.syncCanvasSize(canvas);
+        }
+        syncCanvasSize(canvas) {
+            this._canvasesBlock.style.height = `${window.innerHeight - 5}px`;
+            canvas.width = this._canvasesBlock.clientWidth;
+            canvas.height = this._canvasesBlock.clientHeight;
+            return {
+                width: canvas.width,
+                height: canvas.height,
+            };
+        }
+    }
+
     var State;
     (function (State) {
-        State[State["Std"] = 0] = "Std";
+        State[State["Focused"] = 0] = "Focused";
         State[State["Moving"] = 1] = "Moving";
         State[State["Dragging"] = 2] = "Dragging";
         State[State["Free"] = 3] = "Free";
@@ -94,54 +468,62 @@
      * абсолютная точка отсчёта внутри абсолютной точки отображения - левого
      * верхнего угла канваса.
      */
-    let view = new class {
+    class View {
         constructor() {
             this._zoomLevelsList = [
                 0.3, 0.4, 0.5, 0.6, 0.8,
                 1,
                 1.5, 2, 3, 4, 5,
             ];
-            this._state = State.Std;
+            this._state = State.Focused;
             this._spaceObject = null;
-            this.centerX = 0;
-            this.centerY = 0;
             this._dragStartX = 0;
             this._dragStartY = 0;
             this._x = 0;
             this._y = 0;
             this._zoomLevel = 5;
             this._zoom = null;
-            this.toObject = null;
+            this._toObject = null;
             this._setZoom();
         }
-        get spaceObject() { return this._spaceObject; }
-        set spaceObject(so) { this._spaceObject = so; this._x = so.position.x; this._y = so.position.y; }
-        get x() { return this._state == State.Std ? this._spaceObject.position.x : this._x; }
-        get y() { return this._state == State.Std ? this._spaceObject.position.y : this._y; }
+        get spaceObject() {
+            return this._spaceObject;
+        }
+        set spaceObject(so) {
+            this._spaceObject = so;
+            let pos = so.c('position');
+            this._x = pos.x;
+            this._y = pos.y;
+        }
+        get x() { return this._state == State.Focused ? this._spaceObject.c('position').x : this._x; }
+        get y() { return this._state == State.Focused ? this._spaceObject.c('position').y : this._y; }
         get zoom() { return this._zoom; }
         zoomIn() { this._zoomLevel = Math.min(this._zoomLevel + 1, this._zoomLevelsList.length - 1); this._setZoom(); }
         zoomOut() { this._zoomLevel = Math.max(this._zoomLevel - 1, 0); this._setZoom(); }
         _setZoom() { this._zoom = this._zoomLevelsList[this._zoomLevel]; }
         startMoving(so) {
-            if (so == this.spaceObject) {
+            if (so == this._spaceObject) {
                 return;
             }
-            if (this._state == State.Std) {
-                this._x = this._spaceObject.position.x;
-                this._y = this._spaceObject.position.y;
+            if (this._state == State.Focused) {
+                let pos = this._spaceObject.c('position');
+                this._x = pos.x;
+                this._y = pos.y;
             }
             //console.log(`startMoving ${this._x}:${this._y}`);
             this._state = State.Moving;
-            this.toObject = so;
+            this._toObject = so;
             this.continueMoving();
         }
         continueMoving() {
             if (this._state != State.Moving) {
                 return;
             }
-            let { x: toX, y: toY } = this.toObject.position;
-            //console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${this.toObject.draw.x}:${this.toObject.draw.y}.`);
+            let { x: toX, y: toY } = this._toObject.c('position');
+            //let draw = this._toObject.c('draw') as IPositionComponent;
+            //console.log(`Внутренние координаты объекта назначения: ${toX}:${toY}. Координаты рисования: ${draw.x}:${draw.y}.`);
             let distance = getDistance(this._x, this._y, toX, toY);
+            //console.log(`Из ${this._x}:${this._y} в ${toX}:${toY} расстояние ${distance}`);
             if (distance >= 20) {
                 let coeff = distance / 20;
                 let moveX = (toX - this._x) / coeff;
@@ -154,8 +536,8 @@
             else {
                 this._x = toX;
                 this._y = toY;
-                this.spaceObject = this.toObject;
-                this._state = State.Std;
+                this.spaceObject = this._toObject;
+                this._state = State.Focused;
                 //console.log('stop moving');
                 //console.log(this.spaceObject);
             }
@@ -176,7 +558,42 @@
             //console.log('stop drag');
             this._state = State.Free;
         }
-    }();
+    }
+
+    class Focus {
+        constructor({ canvasesBlock, entitiesTree }) {
+            this._canvasesBlock = canvasesBlock;
+            this._entitiesTree = entitiesTree;
+        }
+        getNearestSpaceObject(x, y) {
+            let rect = this._canvasesBlock.getBoundingClientRect();
+            let distance = 1000000;
+            let clickedObject = null;
+            this._updateFocusPositions();
+            this._entitiesTree.process('focus', so => {
+                let clickedX = x - rect.left;
+                let clickedY = y - rect.top;
+                let focus = so.c('focus');
+                let d = getDistance(clickedX, clickedY, focus.x, focus.y);
+                //console.log(`${clickedX}:${clickedY} <> ${(<any>so.c('sphere')).color} ${focus.x}:${focus.y} = ${d}`);
+                if (d < distance) {
+                    distance = d;
+                    clickedObject = so;
+                }
+            });
+            //console.log(clickedObject);
+            return clickedObject;
+        }
+        _updateFocusPositions() {
+            this._entitiesTree.process('focus', so => {
+                let drawPos = so.c('draw');
+                let focus = so.c('focus');
+                focus.x = drawPos.x;
+                focus.y = drawPos.y;
+            });
+            //drawSystem.updateFocusCoords();
+        }
+    }
 
     class MouseInput {
         constructor(e) {
@@ -186,742 +603,349 @@
         }
     }
 
-    let objectsTree = new class {
-        constructor() {
-            this.root = null;
+    var InputMessages;
+    (function (InputMessages) {
+        InputMessages[InputMessages["MouseDown"] = 0] = "MouseDown";
+        InputMessages[InputMessages["MouseUp"] = 1] = "MouseUp";
+        InputMessages[InputMessages["MouseMove"] = 2] = "MouseMove";
+        InputMessages[InputMessages["MouseLeave"] = 3] = "MouseLeave";
+        InputMessages[InputMessages["MouseEnter"] = 4] = "MouseEnter";
+        InputMessages[InputMessages["Wheel"] = 5] = "Wheel";
+    })(InputMessages || (InputMessages = {}));
+
+    let im = InputMessages;
+    var State$1;
+    (function (State) {
+        State[State["Focused"] = 0] = "Focused";
+        State[State["MouseDown"] = 1] = "MouseDown";
+        State[State["Dragging"] = 2] = "Dragging";
+    })(State$1 || (State$1 = {}));
+    class Input {
+        constructor({ canvasesBlock, view, focus }) {
+            this._state = State$1.Focused;
+            this._down = null;
+            this._up = null;
+            this._move = null;
+            canvasesBlock.onmousedown = e => this.notify(im.MouseDown, e);
+            canvasesBlock.onmouseup = e => this.notify(im.MouseUp, e);
+            canvasesBlock.onmousemove = e => this.notify(im.MouseMove, e);
+            canvasesBlock.onmouseleave = e => this.notify(im.MouseLeave, e);
+            canvasesBlock.onmouseenter = e => this.notify(im.MouseEnter, e);
+            window.onwheel = e => this.notify(im.Wheel, e);
+            this._canvasesBlock = canvasesBlock;
+            this._view = view;
+            this._focus = focus;
         }
-        process(componentFilter, callback) {
-            //console.log(this.root);
-            this._process(componentFilter, this.root, callback);
-        }
-        _process(componentFilter, spaceObject, callback) {
-            if (!componentFilter || spaceObject[componentFilter]) {
-                callback(spaceObject);
+        notify(m, e) {
+            let state = this._state;
+            if (m == im.MouseDown) {
+                this._down = new MouseInput(e);
+                if (state == State$1.Focused) {
+                    this._state = State$1.MouseDown;
+                }
             }
-            if (spaceObject.children.length) {
-                for (let so of spaceObject.children) {
-                    this._process(componentFilter, so, callback);
+            else if (m == im.MouseMove) {
+                if (state == State$1.MouseDown) {
+                    this._move = new MouseInput(e);
+                    if (this._isMovedForDrag(this._move)) {
+                        this._canvasesBlock.style.cursor = 'grab';
+                        this._state = State$1.Dragging;
+                        this._drag();
+                    }
+                }
+                if (state == State$1.Dragging) {
+                    this._move = new MouseInput(e);
+                    this._drag();
+                }
+            }
+            else if (m == im.MouseUp) {
+                this._up = new MouseInput(e);
+                this._canvasesBlock.style.cursor = null;
+                if (state == State$1.MouseDown || state == State$1.Dragging) {
+                    if (state == State$1.Dragging) {
+                        this._state = State$1.Focused;
+                        this._view.stopDragging();
+                    }
+                    if (this._isTimedForFocus() && !this._isMovedForDrag(this._up)) {
+                        this._state = State$1.Focused;
+                        this._click();
+                    }
+                }
+            }
+            else if (m == im.MouseLeave) {
+                this._up = new MouseInput(e);
+                this._canvasesBlock.style.cursor = null;
+                if (state == State$1.MouseDown || state == State$1.Dragging) {
+                    if (state == State$1.Dragging) {
+                        this._state = State$1.Focused;
+                        this._view.stopDragging();
+                    }
+                }
+            }
+            else if (m == im.MouseEnter) {
+                if (e.buttons & 1) {
+                    this._down = new MouseInput(e);
+                    this._state = State$1.MouseDown;
+                }
+            }
+            if (m == im.Wheel) {
+                (e.deltaY < 0) ? this._view.zoomIn() : this._view.zoomOut();
+            }
+        }
+        _isTimedForFocus() {
+            let timeDiff = this._up.time - this._down.time;
+            return (timeDiff <= 500);
+        }
+        _isMovedForDrag(mouseInput) {
+            let distance = getDistance(this._down.x, this._down.y, mouseInput.x, mouseInput.y);
+            return (distance > 3);
+        }
+        _click() {
+            let clickedObject = this._focus.getNearestSpaceObject(this._down.x, this._down.y);
+            this._view.startMoving(clickedObject);
+        }
+        _drag() {
+            //console.log(`${this._move.x} - ${this._down.x}`);
+            this._view.drag({
+                x: this._move.x - this._down.x,
+                y: this._move.y - this._down.y
+            });
+        }
+    }
+
+    class DrawSystem extends System {
+        constructor({ html, strategies }) {
+            super();
+            this._strategies = {};
+            this._activeStrategy = null;
+            this._html = html;
+            this._strategies = strategies;
+            let strategyNamesList = Object.keys(strategies);
+            this.setStrategy(strategyNamesList[0]);
+            window.onresize = () => this.onViewResize();
+        }
+        run() {
+            this._activeStrategy.run();
+        }
+        setStrategy(name) {
+            this._activeStrategy = this._strategies[name];
+            let size = this._html.activateCanvas(this._activeStrategy.canvas);
+            this._activeStrategy.enable();
+            this._activeStrategy.onViewResize(size.width, size.height);
+            for (let s of Object.values(this._strategies)) {
+                if (s != this._activeStrategy) {
+                    s.disable();
                 }
             }
         }
-    }();
-
-    class System {
-        constructor() { }
-        getComponent(data) { }
-        init() { }
+        get vertical() { return this._activeStrategy.vertical; }
+        onViewResize() {
+            let size = this._html.syncCanvasSize(this._activeStrategy.canvas);
+            this._activeStrategy.onViewResize(size.width, size.height);
+        }
     }
 
-    class DrawSystemBase extends System {
-        constructor() {
-            super(...arguments);
-            this.centerX = 0;
-            this.centerY = 0;
-            this.vertical = 0;
+    class DrawSystemStrategy {
+        constructor({ entitiesTree, exteriors, canvas, view }) {
+            this._isEnabled = false;
+            this.entitiesTree = entitiesTree;
+            this.exteriors = exteriors;
+            this._canvas = canvas;
+            this.view = view;
         }
-        draw() {
-            objectsTree.process(false, so => this.updateCoords(so));
+        get canvas() { return this._canvas; }
+        onViewResize(width, height) { }
+        enable() {
+            if (!this._isEnabled) {
+                this.doEnable();
+                this._isEnabled = true;
+            }
+        }
+        disable() {
+            if (!this._isEnabled) {
+                this.doDisable();
+                this._isEnabled = false;
+            }
+        }
+        doEnable() { }
+        doDisable() { }
+        run() {
+            this.entitiesTree.process(false, so => this.updateDrawPositions(so));
             this.clear();
-            objectsTree.process('sphere', so => this.drawSphere(so));
-            objectsTree.process('disc', so => this.drawDisc(so));
+            for (let [name, drawer] of Object.entries(this.exteriors)) {
+                this.entitiesTree.process(name, so => drawer.draw(so));
+            }
         }
-        updateCoords(so) {
+        updateDrawPositions(so) {
             let v = this.vertical;
-            let pos = so.position;
-            let draw = this.getSpaceObjectDrawComponent(so);
+            let view = this.view;
+            let pos = so.c('position');
+            let draw = so.c('draw');
             draw.x = this.centerX - (view.x * view.zoom) + (pos.x * view.zoom);
             draw.y = this.centerY - (view.y * view.zoom * v) + (pos.y * view.zoom * v);
-            so.draw.x = draw.x;
-            so.draw.y = draw.y;
             //console.log(`${this.centerY} + (${view.y} * ${view.zoom}) + (${pos.y} * ${view.zoom} * ${v}) = ${draw.y}`);
             //console.log(`${draw.x}:${draw.y}`);
         }
     }
 
-    let draw2DSystem = new class extends DrawSystemBase {
-        constructor() {
-            super();
-            this.vertical = -1;
-            this._ctx = canvas2d.getContext('2d');
+    class Canvas2d extends DrawSystemStrategy {
+        constructor({ entitiesTree, exteriors, canvas, view, ctx }) {
+            super({ entitiesTree, exteriors, canvas, view });
+            this._ctx = ctx;
         }
-        getComponent({ spaceObject }) {
-            return { spaceObject, x: 0, y: 0 };
-        }
+        get centerX() { return this._centerX; }
+        get centerY() { return this._centerY; }
+        get vertical() { return -1; }
         onViewResize(width, height) {
-            canvas2d.width = width;
-            canvas2d.height = height;
-            this.centerX = Math.round(width / 2);
-            this.centerY = Math.round(height / 2);
+            this._centerX = this.canvas.width / 2;
+            this._centerY = this.canvas.height / 2;
         }
         clear() {
-            this._ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
-        }
-        drawSphere(so) {
-            let ctx = this._ctx;
-            ctx.beginPath();
-            ctx.fillStyle = so.sphere.color;
-            ctx.arc(so.draw.x, so.draw.y, so.sphere.radius * view.zoom, 0, pi2);
-            ctx.fill();
-            //console.log(`${so.draw.x}:${so.draw.y}`);
-        }
-        drawDisc(so) {
-            let ctx = this._ctx;
-            let disc = so.disc;
-            ctx.beginPath();
-            ctx.strokeStyle = disc.color;
-            ctx.lineWidth = disc.size * view.zoom;
-            let diameter = (so.parent.sphere.radius + disc.distance) * view.zoom +
-                disc.size * view.zoom / 2;
-            ctx.arc(so.draw.x, so.draw.y, diameter, 0, pi2);
-            //console.log(`(${this.parent.radius} + ${this.distance}) * ${view.zoom} + ${this.size} * view.zoom / 2 = ${diameter}`);
-            ctx.stroke();
-        }
-        getSpaceObjectDrawComponent(so) {
-            return so.draw2d;
-        }
-        updateFocusCoords() {
-            objectsTree.process('focus', so => {
-                so.focus.x = so.draw2d.x;
-                so.focus.y = so.draw2d.y;
-            });
-        }
-    };
-
-    let draw3DSystem = new class extends DrawSystemBase {
-        constructor() {
-            super();
-            this.vertical = 1;
-            this._scene = new THREE.Scene();
-            this._camera = new THREE.OrthographicCamera(-200, 200, 100, -100, 1, 2000);
-            this._camera.position.z = 200;
-            this._scene.add(this._camera);
-            this._renderer = new THREE.WebGLRenderer({
-                canvas: canvas3d,
-                antialias: true,
-            });
-            let light = new THREE.PointLight(0xffffff, 1, 0, 0);
-            light.castShadow = true;
-            //light.position.set(100, 100, 100);
-            this._scene.add(light);
-        }
-        getComponent({ spaceObject }) {
-            let geometry;
-            let color;
-            let opacity;
-            let form = spaceObject.sphere ? spaceObject.sphere : spaceObject.disc;
-            let soColor = form.color;
-            //console.log(soColor);
-            if (soColor.startsWith('#')) {
-                if (soColor.length == 7) {
-                    color = soColor;
-                    opacity = 1;
-                }
-                else {
-                    color = soColor.substr(0, 7);
-                    opacity = 1 / 256 * parseInt(soColor.substr(7), 16);
-                    //console.log(color, opacity);
-                }
-            }
-            else {
-                color = soColor;
-            }
-            if (spaceObject.sphere) {
-                geometry = new THREE.SphereGeometry(spaceObject.sphere.radius, 16, 16);
-            }
-            else {
-                let innerRadius = spaceObject.parent.sphere.radius + spaceObject.disc.distance;
-                let outerRadius = innerRadius + spaceObject.disc.size;
-                geometry = new THREE.RingGeometry(innerRadius, outerRadius, 16);
-            }
-            let material = new THREE.MeshPhysicalMaterial({
-                color,
-                opacity,
-                emissive: (spaceObject.sphere?.emissive ?? color),
-                emissiveIntensity: (spaceObject.sphere?.emissive ? 1 : 0.2),
-                metalness: 0.3,
-                roughness: 0.65,
-            });
-            //console.log((spaceObject.sphere));
-            /*let material = new THREE.MeshBasicMaterial({
-                color,
-                opacity,
-            });*/
-            //console.log(geometry, material);
-            let mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            this._scene.add(mesh);
-            return { spaceObject, mesh, x: 0, y: 0 };
-        }
-        onViewResize(width, height) {
-            canvas3d.width = width;
-            canvas3d.height = height;
-            this._camera.left = -canvas3d.width / 2;
-            this._camera.right = canvas3d.width / 2;
-            this._camera.top = canvas3d.height / 2;
-            this._camera.bottom = -canvas3d.height / 2;
-            this._camera.updateProjectionMatrix();
-            this._renderer.setSize(width, height);
-        }
-        draw() {
-            super.draw();
-            if (this._camera.zoom != view.zoom) {
-                this._camera.zoom = view.zoom;
-                this._camera.updateProjectionMatrix();
-            }
-            this._camera.position.x = view.x;
-            this._camera.position.y = view.y;
-            this._renderer.render(this._scene, this._camera);
-        }
-        updateCoords(so) {
-            let pos = so.position;
-            so.draw3d.x = pos.x;
-            so.draw3d.y = pos.y;
-            so.draw.x = pos.x;
-            so.draw.y = pos.y;
-            //console.log(`(${view.y} * ${v}) + (${pos.y} * ${v}) = ${draw.y}`);
-            //console.log(`${draw.x}:${draw.y}`);
-        }
-        clear() { }
-        drawSphere(so) {
-            let mesh = so.draw3d.mesh;
-            mesh.position.x = so.draw.x;
-            mesh.position.y = so.draw.y;
-            //console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
-        }
-        drawDisc(so) {
-            let mesh = so.draw3d.mesh;
-            mesh.position.x = so.draw.x;
-            mesh.position.y = so.draw.y;
-            //console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
-        }
-        getSpaceObjectDrawComponent(so) {
-            return so.draw3d;
-        }
-        updateFocusCoords() {
-            objectsTree.process('focus', so => {
-                so.focus.x = (canvas3d.width / 2) - (view.x * view.zoom) + (so.position.x * view.zoom);
-                so.focus.y = (canvas3d.height / 2) + (view.y * view.zoom) - (so.position.y * view.zoom);
-            });
-        }
-    };
-
-    let drawSystem = new class extends System {
-        constructor() {
-            super();
-            this._engines = {};
-            this._engines.draw2DSystem = draw2DSystem;
-            this._engines.draw3DSystem = draw3DSystem;
-            this._activeEngine = this._engines.draw2DSystem;
-        }
-        getComponent({ spaceObject }) {
-            return { spaceObject, x: 0, y: 0 };
-        }
-        set2D() {
-            canvas2d.style.display = 'block';
-            canvas3d.style.display = 'none';
-            this._activeEngine = this._engines.draw2DSystem;
-        }
-        set3D() {
-            canvas2d.style.display = 'none';
-            canvas3d.style.display = 'block';
-            this._activeEngine = this._engines.draw3DSystem;
-        }
-        get vertical() { return this._activeEngine.vertical; }
-        onViewResize(width, height) {
-            this._activeEngine.onViewResize(width, height);
-        }
-        draw() {
-            this._activeEngine.draw();
-        }
-        updateFocusCoords() {
-            this._activeEngine.updateFocusCoords();
-        }
-    }();
-
-    let focusSystem = new class extends System {
-        getComponent({ spaceObject }) {
-            return { spaceObject, x: 0, y: 0 };
-        }
-        getNearestSpaceObject(x, y) {
-            let rect = canvasesBlock.getBoundingClientRect();
-            let distance = 1000000;
-            let clickedObject = null;
-            this._updateCoords();
-            objectsTree.process('focus', so => {
-                let clickedX = x - rect.left;
-                let clickedY = y - rect.top;
-                let d = getDistance(clickedX, clickedY, so.focus.x, so.focus.y);
-                //console.log(`${clickedX}:${clickedY} <> ${so.sphere.color} ${so.focus.x}:${so.focus.y} = ${d}`);
-                if (d < distance) {
-                    distance = d;
-                    clickedObject = so;
-                }
-            });
-            //console.log(clickedObject);
-            return clickedObject;
-        }
-        _updateCoords() {
-            drawSystem.updateFocusCoords();
-        }
-    };
-
-    var State$1;
-    (function (State) {
-        State[State["Std"] = 0] = "Std";
-        State[State["Mousedown"] = 1] = "Mousedown";
-        State[State["Drag"] = 2] = "Drag";
-    })(State$1 || (State$1 = {}));
-    let input = new class {
-        constructor() {
-            this.state = State$1.Std;
-            this.down = null;
-            this.up = null;
-            this.move = null;
-        }
-        /**
-         * Уведомление о вводе.
-         *
-         * m:
-         * - mousedown
-         * - mouseup
-         * - mousemove
-         * - mouseleave
-         * - mouseenter
-         * - wheel
-         *
-         * data:
-         * - e
-         *
-         * state:
-         * - std
-         * - mousedown
-         * -
-         */
-        notify(m, data) {
-            let state = this.state;
-            let e = data.e;
-            if (m == 'mousedown') {
-                this.down = new MouseInput(e);
-                if (state == State$1.Std) {
-                    this.state = State$1.Mousedown;
-                }
-            }
-            else if (m == 'mousemove') {
-                if (state == State$1.Mousedown) {
-                    this.move = new MouseInput(e);
-                    if (this._isMovedForDrag(this.move)) {
-                        canvasesBlock.style.cursor = 'grab';
-                        this.state = State$1.Drag;
-                        this._drag();
-                    }
-                }
-                if (state == State$1.Drag) {
-                    this.move = new MouseInput(e);
-                    this._drag();
-                }
-            }
-            else if (m == 'mouseup') {
-                this.up = new MouseInput(e);
-                canvasesBlock.style.cursor = null;
-                if (state == State$1.Mousedown || state == State$1.Drag) {
-                    if (state == State$1.Drag) {
-                        this.state = State$1.Std;
-                        view.stopDragging();
-                    }
-                    if (this._isTimedForFocus() && !this._isMovedForDrag(this.up)) {
-                        this.state = State$1.Std;
-                        this._click();
-                    }
-                }
-            }
-            else if (m == 'mouseleave') {
-                this.up = new MouseInput(e);
-                canvasesBlock.style.cursor = null;
-                if (state == State$1.Mousedown || state == State$1.Drag) {
-                    if (state == State$1.Drag) {
-                        this.state = State$1.Std;
-                        view.stopDragging();
-                    }
-                }
-            }
-            else if (m == 'mouseenter') {
-                if (e.buttons & 1) {
-                    this.down = new MouseInput(e);
-                    this.state = State$1.Mousedown;
-                }
-            }
-            if (m == 'wheel') {
-                (e.deltaY < 0) ? view.zoomIn() : view.zoomOut();
-            }
-        }
-        _isTimedForFocus() {
-            let timeDiff = this.up.time - this.down.time;
-            return (timeDiff <= 500);
-        }
-        _isMovedForDrag(mouseInput) {
-            let distance = getDistance(this.down.x, this.down.y, mouseInput.x, mouseInput.y);
-            return (distance > 3);
-        }
-        _click() {
-            let clickedObject = focusSystem.getNearestSpaceObject(this.down.x, this.down.y);
-            view.startMoving(clickedObject);
-        }
-        _drag() {
-            //console.log(`${this.move.x} - ${this.down.x}`);
-            view.drag({
-                x: this.move.x - this.down.x,
-                y: this.move.y - this.down.y
-            });
-        }
-    }();
-
-    //import IFocus          from 'system/ifocus';
-    class SpaceObject {
-        constructor() {
-            this.parent = null;
-            this.children = [];
-        }
-        setComponent(name, component) { this[name] = component; }
-        addChild(child) {
-            this.children.push(child);
+            this._ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         }
     }
 
-    let positionSystem = new class extends System {
-        getComponent({ spaceObject }) {
-            return { spaceObject, x: 0, y: 0 };
+    class Exterior {
+        constructor({ view, ctx }) {
+            this.view = view;
+            this.ctx = ctx;
         }
-    };
+    }
 
-    let stillSystem = new class extends System {
-        getComponent({ spaceObject }) {
-            return { spaceObject };
+    class SphereExterior extends Exterior {
+        draw(so) {
+            let sphere = so.c('sphere');
+            let draw = so.c('draw');
+            let ctx = this.ctx;
+            ctx.beginPath();
+            ctx.fillStyle = sphere.color;
+            ctx.arc(draw.x, draw.y, sphere.radius * this.view.zoom, 0, pi2);
+            ctx.fill();
+            //console.log(`${draw.x}:${draw.y}`);
         }
-        move() {
-            objectsTree.process('still', so => this._setCoords(so));
-        }
-        _setCoords(so) {
-            let pos = so.position;
-            let [parentX, parentY] = so.parent ? [so.parent.position.x, so.parent.position.y] : [0, 0];
-            pos.x = parentX;
-            pos.y = parentY;
-            //console.log(`${pos.x}:${pos.y}`);
-        }
-    }();
+    }
 
-    let orbitSystem = new class extends System {
-        getComponent({ spaceObject, distance, speed }) {
-            let centerDistance = spaceObject.parent.sphere.radius + distance;
-            let angle = Math.random() * pi2;
-            let orbitLength = centerDistance * pi2;
-            let orbitPartSize = speed / orbitLength;
-            let moveAngle = pi2 * orbitPartSize;
-            /*console.log(`Расстояние от центра: ${spaceObject.parent.sphere.radius} + ${distance} = ${centerDistance}`);
-            console.log(`Начальный угол: ${angle}`);
-            console.log(`Длина орбиты: ${orbitLength}`);
-            console.log(`Какую часть орбиты объект проходит со скоростью ${speed}: ${orbitPartSize}`);
-            console.log(`Сколько радиан объект проходит со скоростью ${speed}: ${moveAngle}`);
-            console.log(`В градусах: ${360 * orbitPartSize}`);
-            console.log('----------------');*/
-            return {
-                spaceObject,
-                distance,
-                speed,
-                ...{ centerDistance, angle, moveAngle }
-            };
+    class DiscExterior extends Exterior {
+        draw(so) {
+            let parentSphere = so.parent.c('sphere');
+            let disc = so.c('disc');
+            let draw = so.c('draw');
+            let ctx = this.ctx;
+            let view = this.view;
+            ctx.beginPath();
+            ctx.strokeStyle = disc.color;
+            ctx.lineWidth = disc.size * view.zoom;
+            let diameter = (parentSphere.radius + disc.distance) * view.zoom +
+                disc.size * view.zoom / 2;
+            ctx.arc(draw.x, draw.y, diameter, 0, pi2);
+            ctx.stroke();
+            //console.log(`(${parentSphere.radius} + ${disc.distance}) * ${view.zoom} + ${disc.size} * view.zoom / 2 = ${diameter}`);
         }
-        move() {
-            objectsTree.process('orbit', so => this._move(so));
+    }
+
+    class MoveSystem extends System {
+        constructor({ entitiesTree }) {
+            super();
+            this._entitiesTree = null;
+            this._entitiesTree = entitiesTree;
+        }
+        run() {
+            this._entitiesTree.process(['still', 'orbit'], so => this._move(so));
         }
         _move(so) {
-            let orbit = so.orbit;
+            if (so.c('still')) {
+                this._standStill(so);
+            }
+            else {
+                this._orbit(so);
+            }
+        }
+        _standStill(so) {
+            let pos = so.c('position');
+            if (!so.parent) {
+                [pos.x, pos.y] = [0, 0];
+            }
+            else {
+                let parentPos = so.parent.c('position');
+                [pos.x, pos.y] = [parentPos.x, parentPos.y];
+            }
+            //console.log(`${pos.x}:${pos.y}`);
+        }
+        _orbit(so) {
+            let parentPos = so.parent.c('position');
+            let pos = so.c('position');
+            let orbit = so.c('orbit');
             //console.log(orbit.moveAngle);
             orbit.angle += orbit.moveAngle;
             if (orbit.angle > pi2) {
                 orbit.angle -= pi2;
             }
-            this._setCoords(so);
-        }
-        _setCoords(so) {
-            let pos = so.position;
-            let orbit = so.orbit;
             let angle = angle270 - orbit.angle;
             let lx = Math.cos(angle) * orbit.centerDistance;
             let ly = Math.sin(angle) * orbit.centerDistance;
-            pos.x = so.parent.position.x + lx;
-            pos.y = so.parent.position.y + ly;
+            pos.x = parentPos.x + lx;
+            pos.y = parentPos.y + ly;
         }
-    }();
-
-    let sphereSystem = new class extends System {
-        getComponent({ spaceObject, size, color, emissive }) {
-            return {
-                spaceObject,
-                size,
-                color,
-                emissive,
-                ...{ radius: size / 2 }
-            };
-        }
-    };
-
-    let discSystem = new class extends System {
-        getComponent({ spaceObject, distance, size, color }) {
-            return {
-                spaceObject,
-                distance,
-                size,
-                color,
-            };
-        }
-    };
-
-    let componentsFactory = new class {
-        constructor() {
-            this.position = positionSystem;
-            this.still = stillSystem;
-            this.orbit = orbitSystem;
-            this.sphere = sphereSystem;
-            this.disc = discSystem;
-            this.draw2d = draw2DSystem;
-            this.draw3d = draw3DSystem;
-            this.draw = drawSystem;
-            this.focus = focusSystem;
-        }
-        get(name, data) {
-            return this[name].getComponent(data);
-        }
-    }();
-
-    let spaceObjectsManager = new class {
-        create({ parent = null, components = {} }) {
-            let spaceObject = new SpaceObject();
-            if (parent) {
-                parent.addChild(spaceObject);
-                spaceObject.parent = parent;
-            }
-            for (let [name, data] of Object.entries(components)) {
-                let c = componentsFactory.get(name, { ...data, spaceObject });
-                spaceObject.setComponent(name, c);
-            }
-            return spaceObject;
-        }
-    }();
-
-    let commonComponentParams = {
-        position: {},
-        draw2d: {},
-        draw3d: {},
-        draw: {},
-    };
-    let sun = spaceObjectsManager.create({
-        components: {
-            still: {},
-            sphere: { size: 100, color: 'yellow', emissive: 'yellow' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 30, speed: 2 },
-            sphere: { size: 8, color: 'white' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 70, speed: 1.5 },
-            sphere: { size: 20, color: 'orange' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    let earth = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 140, speed: 1.2 },
-            sphere: { size: 25, color: 'green' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: earth,
-        components: {
-            orbit: { distance: 12, speed: 1 },
-            sphere: { size: 5, color: 'white' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    let mars = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 220, speed: 1 },
-            sphere: { size: 17, color: 'red' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: mars,
-        components: {
-            orbit: { distance: 9, speed: 0.8 },
-            sphere: { size: 5, color: 'white' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: mars,
-        components: {
-            orbit: { distance: 18, speed: 0.6 },
-            sphere: { size: 5, color: 'white' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    for (let a = 0; a < 300; a++) {
-        spaceObjectsManager.create({
-            parent: sun,
-            components: {
-                orbit: {
-                    distance: 280 + Math.floor(Math.random() * 151),
-                    speed: 0.3,
-                },
-                sphere: {
-                    size: 2 + Math.floor(Math.random() * 3),
-                    color: 'gray',
-                },
-                focus: {},
-                ...commonComponentParams
-            },
-        });
     }
-    let jupiter = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 550, speed: 1 },
-            sphere: { size: 50, color: 'khaki' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    for (let a = 0; a < 4; a++) {
-        spaceObjectsManager.create({
-            parent: jupiter,
-            components: {
-                orbit: { distance: 20 + a * 10, speed: 1 - a / 10 },
-                sphere: { size: 5, color: 'white' },
-                focus: {},
-                ...commonComponentParams
-            },
-        });
+
+    class Engine {
+        constructor({ strategies }) {
+            this._strategies = {};
+            this._activeStrategy = null;
+            this._strategies = strategies;
+        }
+        setStrategy(name) {
+        }
     }
-    let saturn = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 700, speed: 0.9 },
-            sphere: { size: 30, color: 'khaki' },
-            focus: {},
-            ...commonComponentParams
+
+    let html = new Html();
+    let view = new View();
+    let focus = new Focus({ canvasesBlock: html.canvasesBlock, entitiesTree: ecs.entitiesTree });
+    let input = new Input({ canvasesBlock: html.canvasesBlock, view, focus });
+    let moveSystem = new MoveSystem({
+        entitiesTree: ecs.entitiesTree,
+    });
+    let drawSystem = new DrawSystem({
+        html,
+        strategies: {
+            canvas2d: new Canvas2d({
+                canvas: html.canvas2d,
+                ctx: html.canvas2dContext,
+                view: view,
+                entitiesTree: ecs.entitiesTree,
+                exteriors: {
+                    sphere: new SphereExterior({ view, ctx: html.canvas2dContext }),
+                    disc: new DiscExterior({ view, ctx: html.canvas2dContext }),
+                },
+            }),
         },
     });
-    spaceObjectsManager.create({
-        parent: saturn,
-        components: {
-            still: {},
-            disc: { distance: 5, size: 6, color: '#f0e68c88' },
-            ...commonComponentParams
+    let engine = new Engine({
+        strategies: {
+            canvas2d: { drawStrategy: 'canvas2d', 'focusStrategy': 'real' },
+            canvas3d: { drawStrategy: 'canvas3d', 'focusStrategy': 'virtual' },
         },
     });
-    spaceObjectsManager.create({
-        parent: saturn,
-        components: {
-            still: {},
-            disc: { distance: 12, size: 4, color: '#f0e68c88' },
-            ...commonComponentParams
-        },
-    });
-    let uranus = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 850, speed: 0.8 },
-            sphere: { size: 28, color: 'lightblue' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: uranus,
-        components: {
-            still: {},
-            disc: { distance: 7, size: 5, color: '#add8e688' },
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 950, speed: 0.7 },
-            sphere: { size: 26, color: 'lightblue' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    let pluto = spaceObjectsManager.create({
-        parent: sun,
-        components: {
-            orbit: { distance: 1000, speed: 0.5 },
-            sphere: { size: 5, color: 'gray' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    spaceObjectsManager.create({
-        parent: pluto,
-        components: {
-            orbit: { distance: 5, speed: 0.2 },
-            sphere: { size: 3, color: 'gray' },
-            focus: {},
-            ...commonComponentParams
-        },
-    });
-    objectsTree.root = sun;
+
+    let cRegistrator = new ComponentsRegistrator({ componentsManager: ecs.componentsManager });
+    cRegistrator.register();
+    let soInitializer = new SpaceObjectsInitializer({ entitiesManager: ecs.entitiesManager });
+    let sun = soInitializer.init();
+    ecs.entitiesTree.root = sun;
     view.spaceObject = sun;
     if (window.location.search.match('d=3')) {
-        drawSystem.set3D();
+        engine.setStrategy('canvas3d');
     }
     else {
-        drawSystem.set2D();
+        engine.setStrategy('canvas2d');
     }
-    function resizeView() {
-        //console.log(`${window.innerWidth}x${window.innerHeight} vs ${html.clientWidth}x${html.clientHeight}`);
-        //canvases.style.height = `${window.innerHeight - 5}px`;
-        let viewWidth = window.innerWidth;
-        let viewHeight = window.innerHeight - 5;
-        drawSystem.onViewResize(viewWidth, viewHeight);
-    }
-    resizeView();
     function animationFrame() {
-        orbitSystem.move();
-        stillSystem.move();
+        moveSystem.run();
+        //stillSystem.run();
         view.continueMoving();
-        drawSystem.draw();
+        drawSystem.run();
         window.requestAnimationFrame(animationFrame);
     }
-    window.onresize = resizeView;
     animationFrame();
-    canvasesBlock.onmousedown = e => input.notify('mousedown', { e });
-    canvasesBlock.onmouseup = e => input.notify('mouseup', { e });
-    canvasesBlock.onmousemove = e => input.notify('mousemove', { e });
-    canvasesBlock.onmouseleave = e => input.notify('mouseleave', { e });
-    canvasesBlock.onmouseenter = e => input.notify('mouseenter', { e });
-    window.onwheel = e => input.notify('wheel', { e });
 
-}(THREE));
+}());
