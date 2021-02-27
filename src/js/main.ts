@@ -1,15 +1,14 @@
 import {ecs}                     from 'ecs/import';
+import {IPositionComponent}      from 'component/import';
+import {ComponentsInitializer}   from 'init/components-initializer';
 import {SpaceObjectsInitializer} from 'init/space-objects-initializer';
-import {ComponentsRegistrator}   from 'init/components-registrator';
 
-import {view, moveSystem, drawSystem, engine} from 'dic';
-
+import {threed, view, moveSystem, drawSystem, engine} from 'dic';
 
 
-let cRegistrator = new ComponentsRegistrator({componentsManager: ecs.componentsManager});
-cRegistrator.register();
 
-
+let compsInitializer = new ComponentsInitializer({componentsManager: ecs.componentsManager, scene: threed.scene});
+compsInitializer.init();
 
 let soInitializer     = new SpaceObjectsInitializer({entitiesManager: ecs.entitiesManager});
 let sun               = soInitializer.init();

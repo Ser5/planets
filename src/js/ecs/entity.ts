@@ -1,12 +1,12 @@
-import {IComponent} from './icomponent';
-
+import {IComponent}  from './icomponent';
+import {TComponents} from './tcomponents';
 
 
 export class Entity {
 	public parent:   Entity   = null;
 	public children: Entity[] = [];
 
-	private _components: Record<string, IComponent> = {};
+	private _components: TComponents = {};
 
 	constructor () {
 	}
@@ -19,7 +19,7 @@ export class Entity {
 
 
 
-	setComponent (name: string, component: IComponent) { this._components[name] = component; }
+	setComponents (components: TComponents) { this._components = components; }
 
 
 

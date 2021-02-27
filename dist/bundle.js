@@ -1,15 +1,34 @@
-(function () {
+(function (THREE) {
     'use strict';
 
     class ComponentsManager {
         constructor() {
-            this._creators = {};
+            this._initializers = {};
         }
-        register(name, creator) {
-            this._creators[name] = creator;
+        registerInitializersList(initializers) {
+            for (let initer of initializers) {
+                this._initializers[initer.componentName] = initer;
+            }
         }
-        get(name, data) {
-            return this._creators[name](data);
+        /*get (name: string, params: TComponentParams): IComponent {
+            if (this._initializers[name]) {
+                return this._initializers[name].initComponent(params);
+            } else {
+                throw `No component initializer for [${name}]`;
+            }
+        }*/
+        initComponents(components) {
+            let initedComponents = {};
+            for (let [name, c] of Object.entries(components)) {
+                //console.log(name);
+                if (this._initializers[name]) {
+                    //console.log(this._initializers[name]);
+                    c = this._initializers[name].initComponent(c);
+                }
+                initedComponents[name] = c;
+            }
+            //console.log(initedComponents);
+            return initedComponents;
         }
     }
 
@@ -22,7 +41,7 @@
         addChild(child) {
             this.children.push(child);
         }
-        setComponent(name, component) { this._components[name] = component; }
+        setComponents(components) { this._components = components; }
         c(name) {
             return this._components[name] ?? null;
         }
@@ -38,10 +57,12 @@
                 parent.addChild(entity);
                 entity.parent = parent;
             }
-            for (let [name, data] of Object.entries(components)) {
-                let c = this._componentsManager.get(name, { ...data, entity });
-                entity.setComponent(name, c);
+            for (let c of Object.values(components)) {
+                c.entity = entity;
             }
+            components = this._componentsManager.initComponents(components);
+            entity.setComponents(components);
+            //console.log(entity);
             return entity;
         }
     }
@@ -82,12 +103,185 @@
     }
 
     class System {
+        initComponents(components) {
+            return components;
+        }
     }
 
     let ecs = {};
     ecs.componentsManager = new ComponentsManager();
     ecs.entitiesManager = new EntitiesManager({ componentsManager: ecs.componentsManager });
     ecs.entitiesTree = new EntitiesTree();
+
+    class PositionInit {
+        get componentName() { return 'position'; }
+        ;
+        initComponent({ entity, x = 0, y = 0 }) {
+            return { entity, x, y };
+        }
+        ;
+    }
+
+    class StillInit {
+        get componentName() { return 'still'; }
+        ;
+        initComponent({ entity }) {
+            return { entity };
+        }
+    }
+
+    let pi2 = Math.PI * 2;
+    let angle270 = Math.PI * 1.5;
+    function getDistance(x1, y1, x2, y2) {
+        let xDistance = x1 - x2;
+        let yDistance = y1 - y2;
+        let d = Math.sqrt(xDistance ** 2 + yDistance ** 2);
+        return d;
+    }
+
+    class OrbitInit {
+        get componentName() { return 'orbit'; }
+        ;
+        initComponent({ entity, distance = 0, speed = 0 }) {
+            let centerDistance = entity.parent.c('sphere').radius + distance;
+            let angle = Math.random() * pi2;
+            let orbitLength = centerDistance * pi2;
+            let orbitPartSize = speed / orbitLength;
+            let moveAngle = pi2 * orbitPartSize;
+            /*console.log(`Расстояние от центра: ${entity.parent.sphere.radius} + ${distance} = ${centerDistance}`);
+            console.log(`Начальный угол: ${angle}`);
+            console.log(`Длина орбиты: ${orbitLength}`);
+            console.log(`Какую часть орбиты объект проходит со скоростью ${speed}: ${orbitPartSize}`);
+            console.log(`Сколько радиан объект проходит со скоростью ${speed}: ${moveAngle}`);
+            console.log(`В градусах: ${360 * orbitPartSize}`);
+            console.log('----------------');*/
+            return {
+                entity,
+                distance,
+                speed,
+                ...{ centerDistance, angle, moveAngle }
+            };
+        }
+    }
+
+    class SphereInit {
+        get componentName() { return 'sphere'; }
+        ;
+        initComponent({ entity, size, color }) {
+            return {
+                entity,
+                size,
+                color,
+                ...{ radius: size / 2 },
+            };
+        }
+    }
+
+    let exterior3dHelper = new class {
+        add3dData({ exterior, scene, color, emissive, meshGeometry }) {
+            let meshColor;
+            let meshOpacity;
+            //console.log(color);
+            if (color.startsWith('#')) {
+                if (color.length == 7) {
+                    meshColor = color;
+                    meshOpacity = 1;
+                }
+                else {
+                    meshColor = color.substr(0, 7);
+                    meshOpacity = 1 / 256 * parseInt(color.substr(7), 16);
+                    //console.log(meshColor, meshOpacity);
+                }
+            }
+            else {
+                meshColor = color;
+            }
+            let meshMaterial = new THREE.MeshPhysicalMaterial({
+                color: meshColor,
+                opacity: meshOpacity,
+                emissive: (emissive ?? meshColor),
+                emissiveIntensity: (emissive ? 1 : 0.2),
+                metalness: 0.3,
+                roughness: 0.65,
+            });
+            //console.log((sphere));
+            //console.log(meshGeometry, meshMaterial);
+            let mesh = new THREE.Mesh(meshGeometry, meshMaterial);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            let sphere3d = { ...exterior, emissive, mesh };
+            return sphere3d;
+        }
+    }();
+
+    class Sphere3dInit extends SphereInit {
+        constructor({ scene }) {
+            super();
+            this._scene = scene;
+        }
+        initComponent({ entity, size, color, emissive }) {
+            let sphere = super.initComponent({ entity, size, color });
+            let meshGeometry = new THREE.SphereGeometry(sphere.radius, 16, 16);
+            let sphere3d = exterior3dHelper.add3dData({ exterior: sphere, scene: this._scene, color, emissive, meshGeometry });
+            return sphere3d;
+        }
+    }
+
+    class DiscInit {
+        get componentName() { return 'disc'; }
+        ;
+        initComponent({ entity, distance, size, color }) {
+            return {
+                entity,
+                distance,
+                size,
+                color,
+            };
+        }
+    }
+
+    class Disc3dInit extends DiscInit {
+        constructor({ scene }) {
+            super();
+            this._scene = scene;
+        }
+        initComponent({ entity, distance, size, color, emissive }) {
+            let disc = super.initComponent({ entity, distance, size, color });
+            let parentSphere = entity.parent.c('sphere');
+            let innerRadius = parentSphere.radius + disc.distance;
+            let outerRadius = innerRadius + disc.size;
+            let meshGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 16);
+            let sphere3d = exterior3dHelper.add3dData({ exterior: disc, scene: this._scene, color, emissive, meshGeometry });
+            return sphere3d;
+        }
+    }
+
+    class DrawInit {
+        get componentName() { return 'draw'; }
+        ;
+        initComponent({ entity }) {
+            return { entity, x: 0, y: 0 };
+        }
+        ;
+    }
+
+    class ComponentsInitializer {
+        constructor({ componentsManager, scene }) {
+            this._componentsManager = componentsManager;
+            this._scene = scene;
+        }
+        init() {
+            this._componentsManager.registerInitializersList([
+                new PositionInit(),
+                new StillInit(),
+                new OrbitInit(),
+                new Sphere3dInit({ scene: this._scene }),
+                new Disc3dInit({ scene: this._scene }),
+                new DrawInit(),
+            ]);
+        }
+    }
 
     class SpaceObjectsInitializer {
         constructor({ entitiesManager }) {
@@ -280,78 +474,6 @@
         }
     }
 
-    let pi2 = Math.PI * 2;
-    let angle270 = Math.PI * 1.5;
-    function getDistance(x1, y1, x2, y2) {
-        let xDistance = x1 - x2;
-        let yDistance = y1 - y2;
-        let d = Math.sqrt(xDistance ** 2 + yDistance ** 2);
-        return d;
-    }
-
-    class ComponentsRegistrator {
-        constructor({ componentsManager }) {
-            this._componentsManager = componentsManager;
-        }
-        register() {
-            let componentsManager = this._componentsManager;
-            componentsManager.register('position', function ({ entity, x = 0, y = 0 }) {
-                return { entity, x, y };
-            });
-            componentsManager.register('still', function ({ entity }) {
-                return { entity };
-            });
-            componentsManager.register('orbit', function ({ entity, distance = 0, speed = 0 }) {
-                let centerDistance = entity.parent.c('sphere').radius + distance;
-                let angle = Math.random() * pi2;
-                let orbitLength = centerDistance * pi2;
-                let orbitPartSize = speed / orbitLength;
-                let moveAngle = pi2 * orbitPartSize;
-                /*console.log(`Расстояние от центра: ${entity.parent.sphere.radius} + ${distance} = ${centerDistance}`);
-                console.log(`Начальный угол: ${angle}`);
-                console.log(`Длина орбиты: ${orbitLength}`);
-                console.log(`Какую часть орбиты объект проходит со скоростью ${speed}: ${orbitPartSize}`);
-                console.log(`Сколько радиан объект проходит со скоростью ${speed}: ${moveAngle}`);
-                console.log(`В градусах: ${360 * orbitPartSize}`);
-                console.log('----------------');*/
-                return {
-                    entity,
-                    distance,
-                    speed,
-                    ...{ centerDistance, angle, moveAngle }
-                };
-            });
-            componentsManager.register('sphere', function ({ entity, size, color, emissive }) {
-                return {
-                    entity,
-                    size,
-                    color,
-                    emissive,
-                    ...{ radius: size / 2 },
-                };
-            });
-            componentsManager.register('disc', function ({ entity, distance, size, color }) {
-                return {
-                    entity,
-                    distance,
-                    size,
-                    color,
-                };
-            });
-            componentsManager.register('draw', function ({ entity }) {
-                return {
-                    entity,
-                    x: 0,
-                    y: 0,
-                    mesh: null,
-                };
-            });
-            componentsManager.register('focus', function ({ entity }) {
-                return { entity, x: 0, y: 0 };
-            });
-        }
-    }
-
     class Html {
         constructor() {
             this._html = document.querySelector('html');
@@ -387,6 +509,18 @@
                 height: canvas.height,
             };
         }
+    }
+
+    class Threed {
+        constructor({ canvas }) {
+            this._scene = new THREE.Scene();
+            this._renderer = new THREE.WebGLRenderer({
+                canvas,
+                antialias: true,
+            });
+        }
+        get scene() { return this._scene; }
+        get renderer() { return this._renderer; }
     }
 
     var State;
@@ -717,7 +851,6 @@
         constructor({ html, strategies }) {
             super();
             this._strategies = {};
-            this._activeStrategy = null;
             this._html = html;
             this._strategies = strategies;
             let strategyNamesList = Object.keys(strategies);
@@ -746,12 +879,24 @@
     }
 
     class DrawSystemStrategy {
+        //protected componentInitializers: TComponentInitializers = {};
         constructor({ entitiesTree, exteriors, canvas, view }) {
             this._isEnabled = false;
             this.entitiesTree = entitiesTree;
             this.exteriors = exteriors;
             this._canvas = canvas;
             this.view = view;
+            /*for (let [exName, exDrawer] of Object.entries(exteriors)) {
+                let componentNamesList = exDrawer.getInitComponentNamesList();
+                if (componentNamesList.length > 0) {
+                    if (this.componentInitializers[exName]) {
+                        this.componentInitializers[exName] = [];
+                    }
+                    this.componentInitializers[exName].push(function (data) {
+                        return exDrawer.init(data);
+                    });
+                }
+            }*/
         }
         get canvas() { return this._canvas; }
         onViewResize(width, height) { }
@@ -805,15 +950,29 @@
         }
     }
 
-    class Exterior {
-        constructor({ view, ctx }) {
+    class DrawSystemExterior {
+        constructor({ view }) {
             this.view = view;
+        }
+        init(data) {
+            return null;
+        }
+        getInitComponentNamesList() {
+            return [];
+        }
+    }
+
+    //import {IDrawSystemExterior} from '../idraw-system-exterior';
+    class Exterior extends DrawSystemExterior {
+        constructor({ view, ctx }) {
+            super({ view });
             this.ctx = ctx;
         }
     }
 
     class SphereExterior extends Exterior {
         draw(so) {
+            //console.trace();
             let sphere = so.c('sphere');
             let draw = so.c('draw');
             let ctx = this.ctx;
@@ -821,7 +980,7 @@
             ctx.fillStyle = sphere.color;
             ctx.arc(draw.x, draw.y, sphere.radius * this.view.zoom, 0, pi2);
             ctx.fill();
-            //console.log(`${draw.x}:${draw.y}`);
+            //console.log(`${sphere.color}: [${draw.x};${draw.y}]`);
         }
     }
 
@@ -899,6 +1058,7 @@
     }
 
     let html = new Html();
+    let threed = new Threed({ canvas: html.canvas3d });
     let view = new View();
     let focus = new Focus({ canvasesBlock: html.canvasesBlock, entitiesTree: ecs.entitiesTree });
     let input = new Input({ canvasesBlock: html.canvasesBlock, view, focus });
@@ -927,8 +1087,8 @@
         },
     });
 
-    let cRegistrator = new ComponentsRegistrator({ componentsManager: ecs.componentsManager });
-    cRegistrator.register();
+    let compsInitializer = new ComponentsInitializer({ componentsManager: ecs.componentsManager, scene: threed.scene });
+    compsInitializer.init();
     let soInitializer = new SpaceObjectsInitializer({ entitiesManager: ecs.entitiesManager });
     let sun = soInitializer.init();
     ecs.entitiesTree.root = sun;
@@ -948,4 +1108,4 @@
     }
     animationFrame();
 
-}());
+}(THREE));

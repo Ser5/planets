@@ -1,3 +1,4 @@
+import {TComponents}       from './tcomponents';
 import {Entity}            from './entity';
 import {ComponentsManager} from './components-manager';
 
@@ -14,7 +15,7 @@ export class EntitiesManager {
 
 	create (
 		{parent = null,   components = {}}:
-		{parent?: Entity, components?: object}
+		{parent?: Entity, components?: TComponents}
 	): Entity
 	{
 		let entity = new Entity();
@@ -24,10 +25,13 @@ export class EntitiesManager {
 			entity.parent = parent;
 		}
 
-		for (let [name, data] of Object.entries(components)) {
-			let c = this._componentsManager.get(name, {...data, entity});
-			entity.setComponent(name, c);
+		for (let c of Object.values(components)) {
+			c.entity = entity;
 		}
+
+		components = this._componentsManager.initComponents(components);
+		entity.setComponents(components);
+		//console.log(entity);
 
 		return entity;
 	}

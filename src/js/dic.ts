@@ -1,25 +1,27 @@
 import {ecs} from 'ecs/ecs';
 
-import {Html}  from 'html';
-import {View}  from 'view';
-import {Focus} from 'focus';
-import {Input} from 'input';
+import {Html}   from 'html';
+import {Threed} from 'threed';
+import {View}   from 'view';
+import {Focus}  from 'focus';
+import {Input}  from 'input';
 
 import {DrawSystem}     from 'system/draw-system';
 import {Canvas2d}       from 'system/draw-system/canvas2d';
 import {SphereExterior} from 'system/draw-system/canvas2d/sphere-exterior';
 import {DiscExterior}   from 'system/draw-system/canvas2d/disc-exterior';
 
-import {MoveSystem}   from 'system/move-system';
+import {MoveSystem} from 'system/move-system';
 
 import {Engine} from 'engine';
 
 
 
-export let html  = new Html();
-export let view  = new View();
-export let focus = new Focus({canvasesBlock: html.canvasesBlock, entitiesTree: ecs.entitiesTree});
-export let input = new Input({canvasesBlock: html.canvasesBlock, view, focus});
+export let html   = new Html();
+export let threed = new Threed({canvas: html.canvas3d});
+export let view   = new View();
+export let focus  = new Focus({canvasesBlock: html.canvasesBlock, entitiesTree: ecs.entitiesTree});
+export let input  = new Input({canvasesBlock: html.canvasesBlock, view, focus});
 
 
 

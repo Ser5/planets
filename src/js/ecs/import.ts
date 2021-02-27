@@ -1,4 +1,7 @@
 export * from './icomponent';
+export * from './tcomponents';
+export * from './tcomponent-params';
+export * from './icomponent-init';
 export * from './components-manager';
 export * from './entity';
 export * from './entities-manager';

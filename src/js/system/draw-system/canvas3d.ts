@@ -1,10 +1,10 @@
 import {Entity, EntitiesTree} from 'ecs/import';
 import {View}                 from 'view';
 
-import {DrawSystemStrategy}   from './draw-system-strategy';
-import {IDrawSystemExterior}  from './idraw-system-exterior';
+import {DrawSystemStrategy} from './draw-system-strategy';
+import {TExteriors}         from './texteriors';
 
-import * as THREE             from 'three';
+import * as THREE from 'three';
 
 
 
@@ -13,11 +13,13 @@ export class Canvas3d extends DrawSystemStrategy {
 	private _camera:   any;
 	private _renderer: any;
 
+	private _componentInitParams;
+
 	constructor (
 		{entitiesTree, exteriors, canvas, view}:
 		{
 			entitiesTree: EntitiesTree,
-			exteriors:    Record<string, IDrawSystemExterior>,
+			exteriors:    TExteriors,
 			canvas:       HTMLCanvasElement,
 			view:         View,
 		}
@@ -39,6 +41,8 @@ export class Canvas3d extends DrawSystemStrategy {
 		light.castShadow = true;
 		//light.position.set(100, 100, 100);
 		this._scene.add(light);
+
+		this._componentInitParams = {scene: this._scene};
 	}
 
 
@@ -46,59 +50,6 @@ export class Canvas3d extends DrawSystemStrategy {
 	get centerX () { return 0 }
 	get centerY () { return 0 }
 	get vertical() { return 1 }
-
-
-
-	/*getComponent (
-		{spaceObject}:
-		{spaceObject: Entity}
-	): IDraw3D {
-		let geometry;
-		let color;
-		let opacity;
-
-		let form    = spaceObject.sphere ? spaceObject.sphere : spaceObject.disc;
-		let soColor = form.color;
-		//console.log(soColor);
-		if (soColor.startsWith('#')) {
-			let colorHex = soColor;
-			if (soColor.length == 7) {
-				color   = soColor;
-				opacity = 1;
-			} else {
-				color   = soColor.substr(0, 7);
-				opacity = 1 / 256 * parseInt(soColor.substr(7), 16);
-				//console.log(color, opacity);
-			}
-		} else {
-			color = soColor;
-		}
-
-		if (spaceObject.sphere) {
-			geometry = new THREE.SphereGeometry(spaceObject.sphere.radius, 16, 16);
-		} else {
-			let innerRadius = spaceObject.parent.sphere.radius + spaceObject.disc.distance;
-			let outerRadius = innerRadius + spaceObject.disc.size;
-			geometry = new THREE.RingGeometry(innerRadius, outerRadius, 16);
-		}
-
-		let material = new THREE.MeshPhysicalMaterial({
-			color,
-			opacity,
-			emissive:          (spaceObject.sphere?.emissive ?? color),
-			emissiveIntensity: (spaceObject.sphere?.emissive ? 1 : 0.2),
-			metalness: 0.3,
-			roughness: 0.65,
-		});
-		//console.log((spaceObject.sphere));
-		//console.log(geometry, material);
-
-		let mesh = new THREE.Mesh(geometry, material);
-		mesh.castShadow    = true;
-		mesh.receiveShadow = true;
-		this._scene.add(mesh);
-		return {spaceObject, mesh, x:0, y:0};
-	}*/
 
 
 
@@ -131,6 +82,12 @@ export class Canvas3d extends DrawSystemStrategy {
 
 
 	clear () {}
+
+
+
+	getComponentInitParams () {
+		return this._componentInitParams;
+	}
 
 
 

@@ -1,8 +1,9 @@
 import {Entity, EntitiesTree} from 'ecs/import';
 import {View}                 from 'view';
 
-import {DrawSystemStrategy}  from './draw-system-strategy';
 import {IDrawSystemExterior} from './idraw-system-exterior';
+import {TExteriors}          from './texteriors';
+import {DrawSystemStrategy}  from './draw-system-strategy';
 
 
 
@@ -15,7 +16,7 @@ export class Canvas2d extends DrawSystemStrategy {
 		{entitiesTree, exteriors, canvas, view, ctx}:
 		{
 			entitiesTree: EntitiesTree,
-			exteriors:    Record<string, IDrawSystemExterior>,
+			exteriors:    TExteriors,
 			canvas:       HTMLCanvasElement,
 			view:         View,
 			ctx:          CanvasRenderingContext2D,

@@ -1,6 +1,6 @@
 import {pi2}    from 'utils';
 import {Entity} from 'ecs/import';
-import {IPositionComponent, ISphereComponent, IDiscComponent, IDrawComponent} from 'component/import';
+import {IPositionComponent, ISphereComponent, IDiscComponent} from 'component/import';
 
 import {Exterior} from './exterior';
 
@@ -10,7 +10,7 @@ export class DiscExterior extends Exterior {
 	draw (so: Entity) {
 		let parentSphere = so.parent.c('sphere') as ISphereComponent;
 		let disc         = so.c('disc')          as IDiscComponent;
-		let draw         = so.c('draw')          as IDrawComponent;
+		let draw         = so.c('draw')          as IPositionComponent;
 		let ctx          = this.ctx;
 		let view         = this.view;
 

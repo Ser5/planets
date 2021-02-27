@@ -1,3 +1,4 @@
+import {TComponents} from 'ecs/import';
 import {System}      from 'ecs/import';
 import {Html}        from 'html';
 import {IStrategist} from 'istrategist';
@@ -6,14 +7,18 @@ import {DrawSystemStrategy} from './draw-system/draw-system-strategy';
 
 
 
+type TStrategies = Record<string, DrawSystemStrategy>;
+
+
+
 export class DrawSystem extends System implements IStrategist {
 	private _html:           Html;
-	private _strategies:     Record<string, DrawSystemStrategy> = {};
-	private _activeStrategy: DrawSystemStrategy                 = null;
+	private _strategies:     TStrategies = {};
+	private _activeStrategy: DrawSystemStrategy;
 
 	constructor (
 		{html,       strategies}:
-		{html: Html, strategies: Record<string, DrawSystemStrategy>}
+		{html: Html, strategies: TStrategies}
 	) {
 		super();
 		this._html       = html;
@@ -55,6 +60,28 @@ export class DrawSystem extends System implements IStrategist {
 		let size = this._html.syncCanvasSize(this._activeStrategy.canvas);
 		this._activeStrategy.onViewResize(size.width, size.height);
 	}
+
+
+
+	/*initComponents (components: TComponents): TComponents {
+		for (let [name, initializersList] of Object.entries(this._componentInitializers)) {
+			if (components[name]) {
+				for (let initializer of initializersList) {
+					components[name] = initializer({component: components[name]});
+				}
+			}
+		}
+		for (let strategy of Object.values(this._strategies)) {
+			for (let [name, initializersList] of Object.entries(strategy.getComponentInitializers())) {
+				if (components[name]) {
+					for (let initer of initializersList) {
+						components[name] = initer({component: components[name], ...strategy.getComponentInitParams()});
+					}
+				}
+			}
+		}
+		return components;
+	}*/
 
 
 

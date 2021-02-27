@@ -2,7 +2,11 @@ import {Entity, EntitiesTree} from 'ecs/import';
 import {View}                 from 'view';
 import {IPositionComponent}   from 'component/import';
 
-import {IDrawSystemExterior} from './idraw-system-exterior';
+import {TExteriors} from './texteriors';
+
+
+
+type TComponentInitializers = Record<string, Function[]>;
 
 
 
@@ -10,18 +14,32 @@ export abstract class DrawSystemStrategy {
 	private _isEnabled: boolean = false;
 
 	protected entitiesTree: EntitiesTree;
-	protected exteriors:    Record<string, IDrawSystemExterior>;
+	protected exteriors:    TExteriors;
 	protected _canvas:      HTMLCanvasElement;
 	protected view:         View;
 
+	//protected componentInitializers: TComponentInitializers = {};
+
 	constructor (
-		{entitiesTree,               exteriors,                                      canvas,                    view}:
-		{entitiesTree: EntitiesTree, exteriors: Record<string, IDrawSystemExterior>, canvas: HTMLCanvasElement, view: View}
+		{entitiesTree,               exteriors,             canvas,                    view}:
+		{entitiesTree: EntitiesTree, exteriors: TExteriors, canvas: HTMLCanvasElement, view: View}
 	) {
 		this.entitiesTree = entitiesTree;
 		this.exteriors    = exteriors;
 		this._canvas      = canvas;
 		this.view         = view;
+
+		/*for (let [exName, exDrawer] of Object.entries(exteriors)) {
+			let componentNamesList = exDrawer.getInitComponentNamesList();
+			if (componentNamesList.length > 0) {
+				if (this.componentInitializers[exName]) {
+					this.componentInitializers[exName] = [];
+				}
+				this.componentInitializers[exName].push(function (data) {
+					return exDrawer.init(data);
+				});
+			}
+		}*/
 	}
 
 
@@ -111,4 +129,14 @@ export abstract class DrawSystemStrategy {
 	protected abstract clear ();
 
 	//abstract updateFocusCoords ();
+
+
+
+	/*getComponentInitializers (): TComponentInitializers {
+		return this.componentInitializers;
+	}
+
+	getComponentInitParams () {
+		return {};
+	}*/
 }
