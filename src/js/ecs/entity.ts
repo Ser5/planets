@@ -23,7 +23,7 @@ export class Entity {
 
 
 
-	c (name: string): IComponent {
+	c (name: string): unknown {
 		return this._components[name] ?? null;
 	}
 }

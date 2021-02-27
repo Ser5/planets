@@ -1,32 +1,38 @@
 import {Entity, EntitiesTree} from 'ecs/import';
 import {getDistance}          from 'utils';
 import {IPositionComponent}   from 'component/import';
+import {IFocusStrategy}       from 'focus/ifocus-strategy';
+import {StrategyHelper}       from 'strategy-helper';
 
 
 
 export class Focus {
+	private _strategyHelper: StrategyHelper<IFocusStrategy>;
+
 	private _canvasesBlock: HTMLElement;
 	private _entitiesTree:  EntitiesTree;
 
 	constructor (
-		{canvasesBlock,              entitiesTree}:
-		{canvasesBlock: HTMLElement, entitiesTree: EntitiesTree}
+		{canvasesBlock,              entitiesTree,               strategies}:
+		{canvasesBlock: HTMLElement, entitiesTree: EntitiesTree, strategies: Record<string, IFocusStrategy>}
 	) {
-		this._canvasesBlock = canvasesBlock;
-		this._entitiesTree  = entitiesTree;
+		this._strategyHelper = new StrategyHelper<IFocusStrategy>(strategies);
+		this._canvasesBlock  = canvasesBlock;
+		this._entitiesTree   = entitiesTree;
 	}
 
 
 
 	getNearestSpaceObject (x: number, y: number): Entity {
-		let rect:          DOMRect = this._canvasesBlock.getBoundingClientRect();
-		let distance:      number  = 1000000;
-		let clickedObject: Entity  = null;
-		this._updateFocusPositions();
+		let focusStrategy: IFocusStrategy = this._strategyHelper.activeStrategy;
+		let rect:          DOMRect        = this._canvasesBlock.getBoundingClientRect();
+		let distance:      number         = 1000000;
+		let clickedObject: Entity         = null;
+
 		this._entitiesTree.process('focus', so => {
 			let clickedX = x - rect.left;
 			let clickedY = y - rect.top;
-			let focus    = so.c('focus') as IPositionComponent;
+			let focus    = focusStrategy.getFocusPosition(so);
 			let d        = getDistance(clickedX, clickedY, focus.x, focus.y);
 			//console.log(`${clickedX}:${clickedY} <> ${(<any>so.c('sphere')).color} ${focus.x}:${focus.y} = ${d}`);
 			if (d < distance) {
@@ -40,13 +46,7 @@ export class Focus {
 
 
 
-	private _updateFocusPositions () {
-		this._entitiesTree.process('focus', so => {
-			let drawPos = so.c('draw')  as IPositionComponent;
-			let focus   = so.c('focus') as IPositionComponent;
-			focus.x     = drawPos.x;
-			focus.y     = drawPos.y;
-		});
-		//drawSystem.updateFocusCoords();
+	setStrategy (name: string) {
+		this._strategyHelper.setActiveStrategy(name);
 	}
 }

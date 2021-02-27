@@ -1,5 +1,6 @@
 import {Entity, EntitiesTree} from 'ecs/import';
 import {View}                 from 'view';
+import {IPositionComponent}   from 'component/import';
 
 import {DrawSystemStrategy} from './draw-system-strategy';
 import {TExteriors}         from './texteriors';
@@ -13,36 +14,31 @@ export class Canvas3d extends DrawSystemStrategy {
 	private _camera:   any;
 	private _renderer: any;
 
-	private _componentInitParams;
-
 	constructor (
-		{entitiesTree, exteriors, canvas, view}:
+		{entitiesTree, exteriors, canvas, scene, renderer, view}:
 		{
 			entitiesTree: EntitiesTree,
 			exteriors:    TExteriors,
 			canvas:       HTMLCanvasElement,
+			scene:        any,
+			renderer:     any,
 			view:         View,
 		}
 	) {
 		super({entitiesTree, exteriors, canvas, view});
 
-		this._scene  = new THREE.Scene();
+		this._scene    = scene;
+		this._renderer = renderer;
 
 		this._camera = new THREE.OrthographicCamera(-200, 200, 100, -100, 1, 2000);
 		this._camera.position.z = 200;
 		this._scene.add(this._camera);
 
-		this._renderer = new THREE.WebGLRenderer({
-			canvas,
-			antialias: true,
-		});
 
 		let light = new THREE.PointLight(0xffffff, 1, 0, 0);
 		light.castShadow = true;
 		//light.position.set(100, 100, 100);
 		this._scene.add(light);
-
-		this._componentInitParams = {scene: this._scene};
 	}
 
 
@@ -69,6 +65,18 @@ export class Canvas3d extends DrawSystemStrategy {
 
 
 
+	updateDrawPositions (so: Entity) {
+		let pos  = so.c('position') as IPositionComponent;
+		let draw = so.c('draw')     as IPositionComponent;
+
+		draw.x = pos.x;
+		draw.y = pos.y;
+
+		//console.log(`${draw.x}:${draw.y}`);
+	}
+
+
+
 	onViewResize (width: number, height: number) {
 		this._camera.left   = -width  / 2;
 		this._camera.right  =  width  / 2;
@@ -82,28 +90,4 @@ export class Canvas3d extends DrawSystemStrategy {
 
 
 	clear () {}
-
-
-
-	getComponentInitParams () {
-		return this._componentInitParams;
-	}
-
-
-
-	/*drawSphere (so: Entity) {
-		let mesh = so.draw3d.mesh;
-		mesh.position.x = so.draw.x;
-		mesh.position.y = so.draw.y;
-		//console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
-	}
-
-
-
-	drawDisc (so: Entity) {
-		let mesh = so.draw3d.mesh;
-		mesh.position.x = so.draw.x;
-		mesh.position.y = so.draw.y;
-		//console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
-	}*/
 }

@@ -694,41 +694,6 @@
         }
     }
 
-    class Focus {
-        constructor({ canvasesBlock, entitiesTree }) {
-            this._canvasesBlock = canvasesBlock;
-            this._entitiesTree = entitiesTree;
-        }
-        getNearestSpaceObject(x, y) {
-            let rect = this._canvasesBlock.getBoundingClientRect();
-            let distance = 1000000;
-            let clickedObject = null;
-            this._updateFocusPositions();
-            this._entitiesTree.process('focus', so => {
-                let clickedX = x - rect.left;
-                let clickedY = y - rect.top;
-                let focus = so.c('focus');
-                let d = getDistance(clickedX, clickedY, focus.x, focus.y);
-                //console.log(`${clickedX}:${clickedY} <> ${(<any>so.c('sphere')).color} ${focus.x}:${focus.y} = ${d}`);
-                if (d < distance) {
-                    distance = d;
-                    clickedObject = so;
-                }
-            });
-            //console.log(clickedObject);
-            return clickedObject;
-        }
-        _updateFocusPositions() {
-            this._entitiesTree.process('focus', so => {
-                let drawPos = so.c('draw');
-                let focus = so.c('focus');
-                focus.x = drawPos.x;
-                focus.y = drawPos.y;
-            });
-            //drawSystem.updateFocusCoords();
-        }
-    }
-
     class MouseInput {
         constructor(e) {
             this.x = e.clientX;
@@ -847,6 +812,71 @@
         }
     }
 
+    class StrategyHelper {
+        constructor(strategies) {
+            this._strategies = {};
+            this._strategies = strategies;
+            this.setActiveStrategy(Object.keys(strategies)[0]);
+        }
+        setActiveStrategy(name) {
+            this._activeStrategy = this._strategies[name];
+        }
+        get activeStrategy() { return this._activeStrategy; }
+    }
+
+    class Focus {
+        constructor({ canvasesBlock, entitiesTree, strategies }) {
+            this._strategyHelper = new StrategyHelper(strategies);
+            this._canvasesBlock = canvasesBlock;
+            this._entitiesTree = entitiesTree;
+        }
+        getNearestSpaceObject(x, y) {
+            let focusStrategy = this._strategyHelper.activeStrategy;
+            let rect = this._canvasesBlock.getBoundingClientRect();
+            let distance = 1000000;
+            let clickedObject = null;
+            this._entitiesTree.process('focus', so => {
+                let clickedX = x - rect.left;
+                let clickedY = y - rect.top;
+                let focus = focusStrategy.getFocusPosition(so);
+                let d = getDistance(clickedX, clickedY, focus.x, focus.y);
+                //console.log(`${clickedX}:${clickedY} <> ${(<any>so.c('sphere')).color} ${focus.x}:${focus.y} = ${d}`);
+                if (d < distance) {
+                    distance = d;
+                    clickedObject = so;
+                }
+            });
+            //console.log(clickedObject);
+            return clickedObject;
+        }
+        setStrategy(name) {
+            this._strategyHelper.setActiveStrategy(name);
+        }
+    }
+
+    class RealFocusStrategy {
+        getFocusPosition(so) {
+            let drawPos = so.c('draw');
+            return { x: drawPos.x, y: drawPos.y };
+        }
+    }
+
+    class VirtualFocusStrategy {
+        constructor({ canvas, view }) {
+            this._canvas = canvas;
+            this._view = view;
+        }
+        getFocusPosition(so) {
+            let canvas = this._canvas;
+            let view = this._view;
+            let pos = so.c('position');
+            return {
+                x: (canvas.width / 2) - (view.x * view.zoom) + (pos.x * view.zoom),
+                y: (canvas.height / 2) + (view.y * view.zoom) - (pos.y * view.zoom),
+            };
+        }
+    }
+
     class DrawSystem extends System {
         constructor({ html, strategies }) {
             super();
@@ -950,23 +980,60 @@
         }
     }
 
+    class Canvas3d extends DrawSystemStrategy {
+        constructor({ entitiesTree, exteriors, canvas, scene, renderer, view }) {
+            super({ entitiesTree, exteriors, canvas, view });
+            this._scene = scene;
+            this._renderer = renderer;
+            this._camera = new THREE.OrthographicCamera(-200, 200, 100, -100, 1, 2000);
+            this._camera.position.z = 200;
+            this._scene.add(this._camera);
+            let light = new THREE.PointLight(0xffffff, 1, 0, 0);
+            light.castShadow = true;
+            //light.position.set(100, 100, 100);
+            this._scene.add(light);
+        }
+        get centerX() { return 0; }
+        get centerY() { return 0; }
+        get vertical() { return 1; }
+        run() {
+            super.run();
+            let view = this.view;
+            if (this._camera.zoom != view.zoom) {
+                this._camera.zoom = view.zoom;
+                this._camera.updateProjectionMatrix();
+            }
+            this._camera.position.x = view.x;
+            this._camera.position.y = view.y;
+            this._renderer.render(this._scene, this._camera);
+        }
+        updateDrawPositions(so) {
+            let pos = so.c('position');
+            let draw = so.c('draw');
+            draw.x = pos.x;
+            draw.y = pos.y;
+            //console.log(`${draw.x}:${draw.y}`);
+        }
+        onViewResize(width, height) {
+            this._camera.left = -width / 2;
+            this._camera.right = width / 2;
+            this._camera.top = height / 2;
+            this._camera.bottom = -height / 2;
+            this._camera.updateProjectionMatrix();
+            this._renderer.setSize(width, height);
+        }
+        clear() { }
+    }
+
     class DrawSystemExterior {
-        constructor({ view }) {
-            this.view = view;
-        }
-        init(data) {
-            return null;
-        }
-        getInitComponentNamesList() {
-            return [];
-        }
     }
 
     //import {IDrawSystemExterior} from '../idraw-system-exterior';
     class Exterior extends DrawSystemExterior {
         constructor({ view, ctx }) {
-            super({ view });
+            super();
             this.ctx = ctx;
+            this.view = view;
         }
     }
 
@@ -982,6 +1049,22 @@
             ctx.fill();
             //console.log(`${sphere.color}: [${draw.x};${draw.y}]`);
         }
+    }
+
+    class Exterior3d extends DrawSystemExterior {
+        draw(so) {
+            let cName = this.exteriorComponentName;
+            let ext = so.c(cName);
+            let draw = so.c('draw');
+            let mesh = ext.mesh;
+            mesh.position.x = draw.x;
+            mesh.position.y = draw.y;
+            //console.log(`${mesh.position.x}:${mesh.position.y}:${mesh.position.z}`);
+        }
+    }
+
+    class Sphere3dExterior extends Exterior3d {
+        get exteriorComponentName() { return 'sphere'; }
     }
 
     class DiscExterior extends Exterior {
@@ -1000,6 +1083,10 @@
             ctx.stroke();
             //console.log(`(${parentSphere.radius} + ${disc.distance}) * ${view.zoom} + ${disc.size} * view.zoom / 2 = ${diameter}`);
         }
+    }
+
+    class Disc3dExterior extends Exterior3d {
+        get exteriorComponentName() { return 'disc'; }
     }
 
     class MoveSystem extends System {
@@ -1048,20 +1135,22 @@
     }
 
     class Engine {
-        constructor({ strategies }) {
-            this._strategies = {};
-            this._activeStrategy = null;
-            this._strategies = strategies;
+        constructor({ drawSystem, focus, strategies }) {
+            this._strategyHelper = new StrategyHelper(strategies);
+            this._drawSystem = drawSystem;
+            this._focus = focus;
         }
         setStrategy(name) {
+            this._strategyHelper.setActiveStrategy(name);
+            let strats = this._strategyHelper.activeStrategy;
+            this._drawSystem.setStrategy(strats.drawStrategy);
+            this._focus.setStrategy(strats.focusStrategy);
         }
     }
 
     let html = new Html();
     let threed = new Threed({ canvas: html.canvas3d });
     let view = new View();
-    let focus = new Focus({ canvasesBlock: html.canvasesBlock, entitiesTree: ecs.entitiesTree });
-    let input = new Input({ canvasesBlock: html.canvasesBlock, view, focus });
     let moveSystem = new MoveSystem({
         entitiesTree: ecs.entitiesTree,
     });
@@ -1078,9 +1167,31 @@
                     disc: new DiscExterior({ view, ctx: html.canvas2dContext }),
                 },
             }),
+            canvas3d: new Canvas3d({
+                canvas: html.canvas3d,
+                scene: threed.scene,
+                renderer: threed.renderer,
+                view: view,
+                entitiesTree: ecs.entitiesTree,
+                exteriors: {
+                    sphere: new Sphere3dExterior(),
+                    disc: new Disc3dExterior(),
+                },
+            }),
         },
     });
+    let focus = new Focus({
+        canvasesBlock: html.canvasesBlock,
+        entitiesTree: ecs.entitiesTree,
+        strategies: {
+            real: new RealFocusStrategy(),
+            virtual: new VirtualFocusStrategy({ canvas: html.canvas3d, view }),
+        },
+    });
+    let input = new Input({ canvasesBlock: html.canvasesBlock, view, focus });
     let engine = new Engine({
+        drawSystem,
+        focus,
         strategies: {
             canvas2d: { drawStrategy: 'canvas2d', 'focusStrategy': 'real' },
             canvas3d: { drawStrategy: 'canvas3d', 'focusStrategy': 'virtual' },

@@ -3,6 +3,7 @@ export * from './i/iposition-component';
 export * from './i/istill-component';
 export * from './i/iorbit-component';
 
+export * from './i/iexterior3d-component';
 export * from './i/isphere-component';
 export * from './i/isphere3d-component';
 export * from './i/idisc-component';

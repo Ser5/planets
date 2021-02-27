@@ -129,14 +129,4 @@ export abstract class DrawSystemStrategy {
 	protected abstract clear ();
 
 	//abstract updateFocusCoords ();
-
-
-
-	/*getComponentInitializers (): TComponentInitializers {
-		return this.componentInitializers;
-	}
-
-	getComponentInitParams () {
-		return {};
-	}*/
 }

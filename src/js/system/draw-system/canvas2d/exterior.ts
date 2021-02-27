@@ -8,12 +8,14 @@ import {DrawSystemExterior}  from '../draw-system-exterior';
 
 export abstract class Exterior extends DrawSystemExterior {
 	protected ctx:  CanvasRenderingContext2D;
+	protected view: View;
 
 	constructor (
 		{view,       ctx}:
 		{view: View, ctx: CanvasRenderingContext2D}
 	) {
-		super({view});
-		this.ctx = ctx;
+		super();
+		this.ctx  = ctx;
+		this.view = view;
 	}
 }
